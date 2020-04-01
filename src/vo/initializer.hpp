@@ -1,10 +1,9 @@
-#ifndef _ME_DSO_INITIALIZER_HPP_
-#define _ME_DSO_INITIALIZER_HPP_
+#ifndef _ME_VSLAM_INITIALIZER_HPP_
+#define _ME_VSLAM_INITIALIZER_HPP_
 
-#include "common.hpp"
-#include "frame.hpp"
+#include <common.hpp>
 
-namespace dso {
+namespace vslam {
 
     struct initializer {
 
@@ -12,13 +11,13 @@ namespace dso {
         
         bool wait_for_first_frame() const { return _wait; }
 
-        void set_first(frame::ptr frame) {
+        void set_first(frame_ptr frame) {
             
             // TODO
             _wait = false;
         }
 
-        bool track(frame::ptr frame) {
+        bool track(frame_ptr frame) {
 
         }
 

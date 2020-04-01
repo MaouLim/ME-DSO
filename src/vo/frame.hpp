@@ -1,66 +1,56 @@
-#ifndef _ME_DSO_FRAME_HPP_
-#define _ME_DSO_FRAME_HPP_
+#ifndef _ME_VSLAM_FRAME_HPP_
+#define _ME_VSLAM_FRAME_HPP_
 
-#include <opencv2/opencv.hpp>
+#include <common.hpp>
 
-#include "common.hpp"
-#include "utils/utils.hpp"
-
-namespace dso {
+namespace vslam {
 
     struct frame {
 
-        using ptr = std::shared_ptr<frame>;
-    
-        frame(const cv::Mat& img, bool key_frame = false);
+        static const int N_GOOD_FEATURES = 5;
 
-        static uint64_t      seq_id;
-        static double        pyr_scale;
-        static uint64_t      pyr_levels;
+        using good_features_t = std::array<feature_ptr, N_GOOD_FEATURES>;
 
-        bool     key_frame;
-        uint64_t id;
         
-        // cv::Mat -> (H, W, Dtype=CV_64F)
-        std::vector<cv::Mat>    pyr_img;  // origin image 
-        std::vector<cv::Size2i> pyr_size;
-        std::vector<cv::Mat>    pyr_gx;   // gx = dI/du
-        std::vector<cv::Mat>    pyr_gy;   // gy = dI/dv
-        std::vector<cv::Mat>    pyr_grad; // grad = sqrt(gx^2+gy^2)
-        
-        std::vector<pixel_point> points;
+        static double   pyr_scale;
+        static uint64_t pyr_levels;
+
+        bool                   key_frame;
+        int                    id;
+        double                 timestamp;
+        Sophus::SE3d           t_cw;          // transform the world coordinate sys to the current frame camera coordinate sys 
+        Sophus::SE3d           t_wc;          // the inverse of t_cw 
+        camera_ptr             camera;
+        std::list<feature_ptr> features;
+        size_t                 n_features;
+        good_features_t        good_features;
+        std::vector<cv::Mat>   pyramid;       // pyramid images, 0 level is the original.
+
+        // std::vector<cv::Mat>    pyr_gx;   // gx = dI/du
+        // std::vector<cv::Mat>    pyr_gy;   // gy = dI/dv
+        // std::vector<cv::Mat>    pyr_grad; // grad = sqrt(gx^2+gy^2)
+
+        frame(const camera_ptr& _cam, const cv::Mat& _img, double _timestamp, bool _key_frame = false);
+        ~frame() = default;
+
+        void as_key_frame() { key_frame = true; _set_good_features(); }
+        const cv::Mat& image() const { return pyramid[0]; }
+        const Eigen::Vector3d& cam_center() const { return t_wc.translation(); }
+        void set_pose(const Sophus::SE3d& _t_cw) { t_cw = _t_cw; t_wc = t_cw.inverse(); }
+
+        bool visible(const Eigen::Vector3d& p_w, double border = 0.0) const;
+        void min_and_median_depth(double& min, double& median) const;
+
+        void add_feature(const feature_ptr& _feat) { features.push_front(_feat); ++n_features; }
+        bool remove_good_feature(const feature_ptr& _feat);
+
+    private:
+        static int _seq_id;
+
+        void _set_good_features() { _remove_useless_features(); _select_good_features(); }
+        void _remove_useless_features();
+        void _select_good_features();
     };
-
-    uint64_t frame::seq_id     = 0;
-    double   frame::pyr_scale  = 0.5;
-    uint64_t frame::pyr_levels = 5;
-
-    inline frame::frame(const cv::Mat& _raw_img, bool _kf) {
-        assert(CV_8UC1 == _raw_img.type());
-        key_frame = _kf;
-
-        cv::Mat _processed;
-        if (CV_64F != _processed.depth()) {
-            _processed.convertTo(_processed, CV_64F, 1./255);
-        }
-
-        pyr_img.resize(pyr_levels);
-        pyr_gx.resize(pyr_levels);
-        pyr_gy.resize(pyr_levels);
-        pyr_grad.resize(pyr_levels);
-
-        for (auto i = 0; i < pyr_levels; ++i) {
-            // fill the current layer of pyramids
-            pyr_img[i] = _processed.clone();
-            pyr_size[i] = _processed.size();
-            utils::calc_dx(_processed, pyr_gx[i]);
-            utils::calc_dy(_processed, pyr_gy[i]);
-            utils::calc_grad(pyr_gx[i], pyr_gy[i], pyr_grad[i]);
-
-            // 
-            utils::down_sample(_processed, pyr_scale);
-        }
-    }
 }
 
 #endif

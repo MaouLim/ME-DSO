@@ -1,15 +1,13 @@
-#ifndef _ME_DSO_CORE_HPP_
-#define _ME_DSO_CORE_HPP_
+#ifndef _ME_VSLAM_CORE_HPP_
+#define _ME_VSLAM_CORE_HPP_
 
-#include "common.hpp"
-#include "initializer.hpp"
-#include "frame.hpp"
+#include <common.hpp>
 
-namespace dso {
+namespace vslam {
 
     struct core_sys {
 
-        using ptr           = std::shared_ptr<core_sys>;
+        using ptr           = vptr<core_sys>;
         using frames_t      = std::vector<frame::ptr>;
         using initializer_t = initializer::ptr;
         using tracker_t     = tracker::ptr;
@@ -21,7 +19,7 @@ namespace dso {
         state_t          state;
         initializer_t    init;
         tracker_t        tracker; // local map
-        mapper_t         mapper;
+        mapper_t         mapper;  // 
         frames_t         all_key_frames;
         frames_t         local_map;
 
@@ -55,10 +53,13 @@ namespace dso {
                 else {
                     // TODO initializer still tracking
                 }
-                return;
+                return true;
             }
 
+            
+
             // TODO tracker->track(frame); and decide whether the frame is a key frame
+            tracker->track(frame);
             if (frame->key_frame) {
                 // TODO insert into 
             }

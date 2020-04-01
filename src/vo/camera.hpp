@@ -1,21 +1,18 @@
-#ifndef _ME_DSO_CAMERA_HPP_
-#define _ME_DSO_CAMERA_HPP_
+#ifndef _ME_VSLAM_CAMERA_HPP_
+#define _ME_VSLAM_CAMERA_HPP_
 
-#include "common.hpp"
+#include <common.hpp>
 
-namespace dso {
+namespace vslam {
 
-    /**
-     * @brief non-distortion pinhole camera model
-     */ 
-    struct pinhole_camera {
+    struct abstract_camera {
 
-        using ptr = std::shared_ptr<pinhole_camera>;
+        int height, width;
 
-        pinhole_camera();
-
-        Eigen::Vector2d cam2pixel(const Eigen::Vector3d& p_c) const;
-        Eigen::Vector3d pixel2cam(const Eigen::Vector2d& p_p, double depth = 1.0) const;
+        abstract_camera(int _h, int _w) : height(_h), width(_w) { }
+        virtual ~abstract_camera() = default;
+        virtual Eigen::Vector2d cam2pixel(const Eigen::Vector3d&) const = 0;
+        virtual Eigen::Vector3d pixel2cam(const Eigen::Vector2d&, double) const = 0;
 
         /**
          * @param p_w  3d point in world
@@ -31,6 +28,34 @@ namespace dso {
          */ 
         Eigen::Vector3d pixel2world(
             const Eigen::Vector2d& p_p, const Sophus::SE3d& t_wc, double depth = 1.0) const;
+    };
+
+    inline Eigen::Vector2d 
+    abstract_camera::world2pixel(
+        const Eigen::Vector3d& p_w, const Sophus::SE3d& t_cw
+    ) const {
+        return this->cam2pixel(t_cw * p_w);
+    }
+
+    inline Eigen::Vector3d 
+    abstract_camera::pixel2world(
+        const Eigen::Vector2d& p_p, const Sophus::SE3d& t_wc, double depth
+    ) const {
+        return t_wc * this->pixel2cam(p_p, depth);
+    }
+
+    /**
+     * @brief non-distortion pinhole camera model
+     */ 
+    struct pinhole_camera : abstract_camera {
+
+        using ptr = vptr<pinhole_camera>;
+
+        pinhole_camera(int _h, int _w);
+        virtual ~pinhole_camera() = default;
+
+        Eigen::Vector2d cam2pixel(const Eigen::Vector3d& p_c) const override;
+        Eigen::Vector3d pixel2cam(const Eigen::Vector2d& p_p, double depth = 1.0) const override;
 
         Eigen::Matrix3d eigen_mat() const;
         cv::Mat cv_mat() const;
@@ -39,7 +64,8 @@ namespace dso {
         double fx, fy, cx, cy;
     };
 
-    pinhole_camera::pinhole_camera() : 
+    pinhole_camera::pinhole_camera(int _h, int _w) : 
+        abstract_camera(_h, _w),
         fx(0.), fy(0.), cx(0.), cy(0.) { }
 
     inline Eigen::Vector2d 
@@ -68,20 +94,6 @@ namespace dso {
 
     inline Eigen::Vector4d pinhole_camera::eigen_vec() const {
         return { fx, fy, cx, cy };
-    }
-
-    inline Eigen::Vector2d 
-    pinhole_camera::world2pixel(
-        const Eigen::Vector3d& p_w, const Sophus::SE3d& t_cw
-    ) const {
-        return this->cam2pixel(t_cw * p_w);
-    }
-
-    inline Eigen::Vector3d 
-    pinhole_camera::pixel2world(
-        const Eigen::Vector2d& p_p, const Sophus::SE3d& t_wc, double depth
-    ) const {
-        return t_wc * this->pixel2cam(p_p, depth);
     }
 }
 

@@ -1,10 +1,9 @@
-#ifndef _ME_DSO_DEPTH_FILTER_HPP_
-#define _ME_DSO_DEPTH_FILTER_HPP_
+#ifndef _ME_VSLAM_DEPTH_FILTER_HPP_
+#define _ME_VSLAM_DEPTH_FILTER_HPP_
 
-#include "common.hpp"
-#include "pixel_point.hpp"
+#include <common.hpp>
 
-namespace dso {
+namespace vslam {
 
     /**
      * @brief implement the depth filter used by SVO, 

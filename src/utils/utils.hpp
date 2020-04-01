@@ -1,7 +1,7 @@
-#ifndef _ME_DSO_UTILS_HPP_
-#define _ME_DSO_UTILS_HPP_
+#ifndef _ME_VSLAM_UTILS_HPP_
+#define _ME_VSLAM_UTILS_HPP_
 
-#include <opencv2/opencv.hpp>
+#include <common.hpp>
 
 namespace utils {
 
@@ -20,8 +20,36 @@ namespace utils {
         cv::sqrt(dx.mul(dx) + dy.mul(dy), dst);
     }
 
-    inline void down_sample(cv::Mat& target, double scale) {
-        cv::resize(target, target, cv::Size(), scale, scale, cv::INTER_CUBIC);
+    inline void down_sample(const cv::Mat& src, cv::Mat& dst, double scale) {
+        cv::resize(src, dst, cv::Size(), scale, scale, cv::INTER_CUBIC);
+    }
+
+    inline std::vector<cv::Mat> 
+    create_pyramid(const cv::Mat& img_level0, size_t n_levels, double scale) {
+        assert(CV_64FC1 == img_level0.type());
+
+        std::vector<cv::Mat> pyramid(n_levels, cv::Mat());
+        pyramid[0] = img_level0;
+        for (size_t i = 1; i < n_levels; ++i) {
+            down_sample(pyramid[i - 1], pyramid[i], scale);
+        }
+
+        return pyramid;
+    }
+
+    template <typename _EigenVecTp>
+    double distance_l1(const _EigenVecTp& left, const _EigenVecTp& right) {
+        return (left - right).lpNorm<1>();
+    }
+
+    template <typename _EigenVecTp>
+    double distance_l2(const _EigenVecTp& left, const _EigenVecTp& right) {
+        return (left - right).lpNorm<2>();
+    }
+
+    template <typename _EigenVecTp>
+    double distance_inf(const _EigenVecTp& left, const _EigenVecTp& right) {
+        return (left - right).lpNorm<-1>();
     }
 }
 
