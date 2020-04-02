@@ -1,14 +1,15 @@
 #include <utils/utils.hpp>
-#include <frame.hpp>
-#include <feature.hpp>
-#include <camera.hpp>
-#include <map_point.hpp>
+#include <utils/config.hpp>
+#include <vo/frame.hpp>
+#include <vo/feature.hpp>
+#include <vo/camera.hpp>
+#include <vo/map_point.hpp>
 
 namespace vslam {
 
-    int      frame::_seq_id     = 0;
-    double   frame::pyr_scale  = 0.5;
-    uint64_t frame::pyr_levels = 5;
+    int    frame::_seq_id    = 0;
+    double frame::pyr_scale  = config::get<double>("pyr_scale");
+    size_t frame::pyr_levels = config::get<double>("pyr_levels");
 
     frame::frame(
         const camera_ptr& _cam, 
@@ -27,7 +28,7 @@ namespace vslam {
     }
 
     bool frame::visible(const Eigen::Vector3d& p_w, double border) const {
-        assert(0.0 < border);
+        assert(0.0 <= border);
 
         Eigen::Vector3d p_c = t_cw * p_w;
         if (p_c.z() < 0.0) { return false; }
@@ -74,9 +75,53 @@ namespace vslam {
     }
 
     void frame::_select_good_features() {
-        for (auto& each : features) {
-            if (each->describe_nothing()) { continue; }
-            //TODO
+        for (auto& candidate : features) {
+            if (candidate->describe_nothing()) { continue; }
+            _check_good_feat(candidate);
+        }
+    }
+
+    void frame::_check_good_feat(const feature_ptr& candidate) {
+
+        Eigen::Vector2d center = { camera->width / 2., camera->height / 2. };
+
+        if (
+            !good_features[0] || 
+                utils::distance_l1(candidate->uv, center) < 
+                utils::distance_l1(good_features[0]->uv, center)
+        ) { good_features[0] = candidate; return; }
+
+        if (center[0] < candidate->uv[0] && center[1] < candidate->uv[1]) {
+            if (
+                !good_features[1] || 
+                    utils::distance_l1(good_features[1]->uv, center) < 
+                    utils::distance_l1(candidate->uv, center)
+            ) { good_features[1] = candidate; return; }
+        }
+
+        if (center[0] < candidate->uv[0] && center[1] >= candidate->uv[1]) {
+            if (
+                !good_features[2] || 
+                    utils::distance_l1(good_features[2]->uv, center) < 
+                    utils::distance_l1(candidate->uv, center)
+            ) { good_features[2] = candidate; return; }
+        }
+
+        if (center[0] >= candidate->uv[0] && center[1] >= candidate->uv[1]) {
+            if (
+                !good_features[3] || 
+                    utils::distance_l1(good_features[3]->uv, center) < 
+                    utils::distance_l1(candidate->uv, center)
+            ) { good_features[3] = candidate; return; }
+        }
+
+        assert(center[0] >= candidate->uv[0] && center[1] < candidate->uv[1]);
+        {
+            if (
+                !good_features[4] || 
+                    utils::distance_l1(good_features[4]->uv, center) < 
+                    utils::distance_l1(candidate->uv, center)
+            ) { good_features[4] = candidate; return; }
         }
     }
 }

@@ -7,13 +7,12 @@ namespace vslam {
 
     struct frame {
 
-        static const int N_GOOD_FEATURES = 5;
+        static const size_t N_GOOD_FEATURES = 5;
 
         using good_features_t = std::array<feature_ptr, N_GOOD_FEATURES>;
 
-        
-        static double   pyr_scale;
-        static uint64_t pyr_levels;
+        static double pyr_scale;
+        static size_t pyr_levels;
 
         bool                   key_frame;
         int                    id;
@@ -24,7 +23,7 @@ namespace vslam {
         std::list<feature_ptr> features;
         size_t                 n_features;
         good_features_t        good_features;
-        std::vector<cv::Mat>   pyramid;       // pyramid images, 0 level is the original.
+        pyramid_t              pyramid;       // pyramid images, 0 level is the original.
 
         // std::vector<cv::Mat>    pyr_gx;   // gx = dI/du
         // std::vector<cv::Mat>    pyr_gy;   // gy = dI/dv
@@ -50,6 +49,7 @@ namespace vslam {
         void _set_good_features() { _remove_useless_features(); _select_good_features(); }
         void _remove_useless_features();
         void _select_good_features();
+        void _check_good_feat(const feature_ptr& candidate);
     };
 }
 

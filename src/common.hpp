@@ -28,6 +28,11 @@
 #include <sophus_templ/se3.hpp>
 #include <sophus_templ/sim3.hpp>
 
+/**
+ * @cpp_headers fast
+ */ 
+#include <fast/fast.h>
+
 namespace vslam {
 
     using Matrix23d = Eigen::Matrix<double, 2, 3>;
@@ -38,15 +43,28 @@ namespace vslam {
     template <typename _Tp>
     using vptr = std::shared_ptr<_Tp>;
 
+    struct config;
     struct feature;
+    struct abstract_detector;
     struct frame;
     struct map_point;
     struct abstract_camera;
+    struct initializer;
+    struct corner;
 
-    using feature_ptr   = vptr<feature>;
-    using frame_ptr     = vptr<frame>;
-    using map_point_ptr = vptr<map_point>;
-    using camera_ptr    = vptr<abstract_camera>;
+    /* pointers */
+    using config_ptr      = vptr<config>;
+    using feature_ptr     = vptr<feature>;
+    using detector_ptr    = vptr<abstract_detector>;
+    using frame_ptr       = vptr<frame>;
+    using map_point_ptr   = vptr<map_point>;
+    using camera_ptr      = vptr<abstract_camera>;
+    using initializer_ptr = vptr<initializer>;   
+
+    /* sets */
+    using corner_set  = std::vector<corner>;
+    using feature_set = std::list<feature_ptr>;
+    using pyramid_t   = std::vector<cv::Mat>;
 }
 
 #endif

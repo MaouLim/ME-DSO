@@ -16,12 +16,12 @@ namespace vslam {
         if (_feat) { observations.push_front(_feat); ++n_obs; }
     }
 
-    inline void map_point::set_observed_by(const feature_ptr& _feat) {
+    void map_point::set_observed_by(const feature_ptr& _feat) {
         observations.push_front(_feat);
         ++n_obs;
     }
 
-    inline feature_ptr map_point::find_observed(const frame_ptr& _frame) const {
+    feature_ptr map_point::find_observed(const frame_ptr& _frame) const {
         for (auto& each_ob : observations) {
             if (_frame == each_ob->host_frame) {
                 return each_ob;
@@ -30,7 +30,7 @@ namespace vslam {
         return nullptr;
     }
 
-    inline bool map_point::remove_obserbed(const frame_ptr& _frame) {
+    bool map_point::remove_obserbed(const frame_ptr& _frame) {
         auto itr = observations.begin();
         while (itr != observations.end()) {
             if (_frame == (*itr)->host_frame) {
@@ -42,7 +42,7 @@ namespace vslam {
         return false;
     }
 
-    inline feature_ptr 
+    feature_ptr 
     map_point::find_closest_observed(
         const frame_ptr& _frame, const Eigen::Vector3d& _cam_center
     ) const {
@@ -66,7 +66,7 @@ namespace vslam {
         return max_cos < CONST_COS_60 ? nullptr : res;
     }
 
-    inline double map_point::local_optimize(size_t n_iterations) {
+    double map_point::local_optimize(size_t n_iterations) {
         static const double converge_eps = 1e-10;
 
         Eigen::Vector3d old_pos = position;
