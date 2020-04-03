@@ -53,7 +53,6 @@ namespace vslam {
     struct corner;
 
     /* pointers */
-    using config_ptr      = vptr<config>;
     using feature_ptr     = vptr<feature>;
     using detector_ptr    = vptr<abstract_detector>;
     using frame_ptr       = vptr<frame>;

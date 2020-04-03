@@ -28,6 +28,12 @@ namespace vslam {
          */ 
         Eigen::Vector3d pixel2world(
             const Eigen::Vector2d& p_p, const Sophus::SE3d& t_wc, double depth = 1.0) const;
+
+        /**
+         * @param p_p    2d pixel point (or called uv)
+         * @param border border size of the viewport
+         */ 
+        bool visible(const Eigen::Vector2d& p_p, double border = 0.0) const;
     };
 
     inline Eigen::Vector2d 
@@ -42,6 +48,13 @@ namespace vslam {
         const Eigen::Vector2d& p_p, const Sophus::SE3d& t_wc, double depth
     ) const {
         return t_wc * this->pixel2cam(p_p, depth);
+    }
+
+    inline bool 
+    abstract_camera::visible(const Eigen::Vector2d& p_p, double border) const { 
+        assert(0.0 <= border);
+        return (border <= p_p[0] && int(p_p[0] + border) < width && 
+                border <= p_p[1] && int(p_p[1] + border) < height);
     }
 
     /**

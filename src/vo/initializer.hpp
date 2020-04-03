@@ -7,50 +7,59 @@ namespace vslam {
 
     struct initializer {
 
-        static const int min_features_to_init;
+        static const int    min_ref_features;
+        static const int    min_features_to_tracked;
+        static const double min_init_shift;
+        static const int    min_inliers;
+        static const double map_scale;
+        static const double viewport_border;
 
-        enum init_result { FAILURE, NO_KEYFRAME, SUCCESS };
+        enum op_result { 
+            FEATURES_NOT_ENOUGH, 
+            NO_REF_FRAME, 
+            SHIFT_NOT_ENOUGH, 
+            INLIERS_NOT_ENOUGH,
+            SUCCESS 
+        };
 
         frame_ptr    ref;
         Sophus::SE3d t_cr; // from ref to cur frame
 
-        initializer() = default;
+        initializer() : ref(nullptr) { }
         ~initializer() = default;
 
-        init_result set_first(const frame_ptr& first);
-        init_result add_frame(const frame_ptr& frame);
+        op_result set_first(const frame_ptr& first);
+        op_result add_frame(const frame_ptr& frame);
         void reset();
 
     private:
-        std::vector<cv::Point2f>     _keypoints_ref;
-        std::vector<cv::Point2f>     _tracked_cur;
+        std::vector<cv::Point2f>     _uvs_ref;
+        std::vector<cv::Point2f>     _uvs_cur;
         std::vector<Eigen::Vector3d> _xy1s_ref;
         std::vector<Eigen::Vector3d> _xy1s_cur;
 
-        std::vector<double>          _disparities;
+        std::vector<double>          _flow_lens;
         std::vector<int>             _inliers;
-        std::vector<Eigen::Vector3d> _xyz_cur;
+        std::vector<Eigen::Vector3d> _xyzs_cur;
 
-        static void _detect_features(
-            const frame_ptr&              target, 
-            std::vector<cv::Point2f>&     keypoints, 
-            std::vector<Eigen::Vector3d>& xy1s
-        );
+        /**
+         * @return the number of the features detected
+         */ 
+        size_t _detect_features(const frame_ptr& target);
+
+        /**
+         * @return the number of the features tracked
+         */ 
+        size_t _rerange_tracked_uvs(const std::vector<uchar>& status);
+
+        /**
+         * @brief track the feature points in the reference frame
+         * @return the number of the features tracked
+         */ 
+        size_t initializer::_track_lk(const frame_ptr& cur);
+
+        void initializer::_calc_homography(double focal_len, double reproject_threshold);
     };
-
-    inline void initializer::reset() {
-        ref.reset();
-        t_cr = Sophus::SE3d();
-
-        _keypoints_ref.clear();
-        _tracked_cur.clear();
-        _xy1s_ref.clear();
-        _xy1s_cur.clear();
-
-        _disparities.clear();
-        _inliers.clear();
-        _xyz_cur.clear();
-    }
 }
 
 #endif

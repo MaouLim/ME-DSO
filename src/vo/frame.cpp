@@ -9,7 +9,7 @@ namespace vslam {
 
     int    frame::_seq_id    = 0;
     double frame::pyr_scale  = config::get<double>("pyr_scale");
-    size_t frame::pyr_levels = config::get<double>("pyr_levels");
+    size_t frame::pyr_levels = config::get<int>("pyr_levels");
 
     frame::frame(
         const camera_ptr& _cam, 
@@ -27,6 +27,10 @@ namespace vslam {
         pyramid = utils::create_pyramid(_img, pyr_levels, pyr_levels);
     }
 
+    bool frame::visible(const Eigen::Vector2d& p_p, double border = 0.0) const {
+        return camera->visible(p_p, border);
+    }
+
     bool frame::visible(const Eigen::Vector3d& p_w, double border) const {
         assert(0.0 <= border);
 
@@ -34,8 +38,7 @@ namespace vslam {
         if (p_c.z() < 0.0) { return false; }
 
         auto uv = camera->cam2pixel(p_c);
-        return (border <= uv[0] && int(uv[0] + border) < camera->width && 
-                border <= uv[1] && int(uv[1] + border) < camera->height);
+        return camera->visible(uv, border);
     }
 
     void frame::min_and_median_depth(double& min, double& median) const {

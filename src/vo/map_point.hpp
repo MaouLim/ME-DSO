@@ -44,7 +44,7 @@ namespace vslam {
         int                     n_success_reproj;
         type_t                  type;
 
-        explicit map_point(const Eigen::Vector3d& _pos, const feature_ptr& _feat = nullptr);
+        explicit map_point(const Eigen::Vector3d& _pos);
         ~map_point() = default;
 
         void set_observed_by(const feature_ptr& _feat);
