@@ -5,21 +5,50 @@
 
 namespace vslam {
 
+    struct map_point_seed {
+
+        int         id;
+        int         batch_id;
+        int         live_time;
+        feature_ptr host_feature;
+
+        /**
+         * @field mu     the mean of depth_inv
+         * @field sigma2 the covariance of depth_inv
+         */ 
+        double mu, sigma2; 
+        double a, b;
+        double dinv_range;
+
+        map_point_seed(const feature_ptr& host, double d_mu, double d_min);
+        ~map_point_seed();
+
+    private:
+        static int _batch_seq;
+        static int _seed_seq;
+    };
+
     /**
      * @brief implement the depth filter used by SVO, 
      *        ref 'Video-based, Real-Time Multi View Stereo'
      */
-
     struct depth_filter {
-        using ptr = std::shared_ptr<depth_filter>;
+
+        struct options_t {
+            bool   check_feature_angle;
+            double seed_converge_thresh;
+        } options;
+
+        detector_ptr detector;
+        
 
         void update_some() const;
-        void update(double x, double tau2, depth_info& seed) const;
+        void update(double x, double tau2, map_point_seed& seed) const;
         double calc_tau2();
     };
 
     inline void depth_filter::update(
-        double x, double tau2, depth_info& seed
+        double x, double tau2, map_point_seed& seed
     ) const {
         double sig2 = sqrt(tau2 + seed.sigma2);
         assert(!std::isnan(sig2));
@@ -29,7 +58,7 @@ namespace vslam {
         double m = s2 * (seed.mu / seed.sigma2 + x / tau2);
 
         double C1 = seed.a / (seed.a + seed.b) * norm_dist(x);
-        double C2 = seed.b / (seed.a + seed.b) / seed.range;
+        double C2 = seed.b / (seed.a + seed.b) / seed.dinv_range;
         double norm_factor = C1 + C2;
 
         C1 /= norm_factor;

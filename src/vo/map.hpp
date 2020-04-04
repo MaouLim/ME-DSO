@@ -5,7 +5,10 @@
 
 namespace vslam {
 
-    //struct 
+    struct mp_candidates {
+        
+        
+    };
 
     struct map {
 

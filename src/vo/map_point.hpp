@@ -64,6 +64,12 @@ namespace vslam {
 
         static frame_ptr _get_frame(const feature_wptr& ob);
     };
+
+    inline frame_ptr map_point::_get_frame(const feature_wptr& ob) {
+        auto exist_ob = ob.lock();
+        if (!exist_ob) { return nullptr; }
+        return exist_ob->host_frame.lock();
+    }
 }
 
 #endif
