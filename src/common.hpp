@@ -43,6 +43,9 @@ namespace vslam {
     template <typename _Tp>
     using vptr = std::shared_ptr<_Tp>;
 
+    template <typename _Tp>
+    using wptr = std::weak_ptr<_Tp>;
+
     struct config;
     struct feature;
     struct abstract_detector;
@@ -52,13 +55,19 @@ namespace vslam {
     struct initializer;
     struct corner;
 
-    /* pointers */
+    /* smart pointers for strong types */
     using feature_ptr     = vptr<feature>;
     using detector_ptr    = vptr<abstract_detector>;
     using frame_ptr       = vptr<frame>;
     using map_point_ptr   = vptr<map_point>;
     using camera_ptr      = vptr<abstract_camera>;
     using initializer_ptr = vptr<initializer>;   
+
+    /* weak pointers */
+    using frame_wptr      = wptr<frame>;
+    using map_point_wptr  = wptr<map_point>;
+    using feature_wptr    = wptr<feature>;
+
 
     /* sets */
     using corner_set  = std::vector<corner>;

@@ -6,15 +6,19 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_BUILD_TYPE Debug)
 #set(CMAKE_CXX_FLAGS -O3)
 
+set(FAST_DIR )
+
 find_package(Eigen3 REQUIRED)
 find_package(SophusTempl REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(fast REQUIRED)
 
 include_directories(./src/)
 
 include_directories(${EIGEN3_INCLUDE_DIRS})
 include_directories(${Sophus_INCLUDE_DIRS})
 include_directories(${OpenCV_INCLUDE_DIRS})
+include_directories(${fast_INCLUDE_DIRS})
 
 add_executable(TestMEDSO test/test.cpp)
-target_link_libraries(TestMEDSO ${OpenCV_LIBS})
+target_link_libraries(TestMEDSO ${OpenCV_LIBS} ${fast_LIBRARIES})

@@ -11,8 +11,12 @@ namespace vslam {
 
         abstract_camera(int _h, int _w) : height(_h), width(_w) { }
         virtual ~abstract_camera() = default;
+
         virtual Eigen::Vector2d cam2pixel(const Eigen::Vector3d&) const = 0;
         virtual Eigen::Vector3d pixel2cam(const Eigen::Vector2d&, double) const = 0;
+        virtual double err_mul() const = 0;
+        virtual double err_mul2() const = 0;
+        virtual cv::Mat rectify(const cv::Mat& raw) { return raw; }
 
         /**
          * @param p_w  3d point in world
@@ -69,6 +73,8 @@ namespace vslam {
 
         Eigen::Vector2d cam2pixel(const Eigen::Vector3d& p_c) const override;
         Eigen::Vector3d pixel2cam(const Eigen::Vector2d& p_p, double depth = 1.0) const override;
+        double err_mul()  const override { return std::abs(fx * fy); }
+        double err_mul2() const override { return std::abs(fx); }
 
         Eigen::Matrix3d eigen_mat() const;
         cv::Mat cv_mat() const;

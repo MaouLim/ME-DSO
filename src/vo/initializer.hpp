@@ -13,11 +13,13 @@ namespace vslam {
         static const int    min_inliers;
         static const double map_scale;
         static const double viewport_border;
+        static const double max_reprojection_err;
 
         enum op_result { 
             FEATURES_NOT_ENOUGH, 
             NO_REF_FRAME, 
             SHIFT_NOT_ENOUGH, 
+            FAILED_CALC_HOMOGRAPHY,
             INLIERS_NOT_ENOUGH,
             SUCCESS 
         };
@@ -50,15 +52,25 @@ namespace vslam {
         /**
          * @return the number of the features tracked
          */ 
-        size_t _rerange_tracked_uvs(const std::vector<uchar>& status);
+        size_t _rerange(const std::vector<uchar>& status);
 
         /**
          * @brief track the feature points in the reference frame
          * @return the number of the features tracked
          */ 
-        size_t initializer::_track_lk(const frame_ptr& cur);
+        size_t _track_lk(const frame_ptr& cur);
 
-        void initializer::_calc_homography(double focal_len, double reproject_threshold);
+        /**
+         * @return succeed to compute the pose from homography matrix 
+         */ 
+        bool _calc_homography(double err_mul2, double reproject_threshold);
+
+        /**
+         * @brief using the pose to triangulate, recover the position 
+         *        of the 3d points (in world coord-sys)
+         * @return evalute the pose (sum of reprojection error)
+         */ 
+        double _compute_inliers_and_triangulate(double reproject_threshold);
     };
 }
 

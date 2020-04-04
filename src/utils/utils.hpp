@@ -178,6 +178,17 @@ namespace utils {
         return alpha * (xyz / xyz.z() - xy1).norm() + beta;
     }
 
+    inline double sampsonus_err(
+        const Eigen::Vector3d& xy1_ref, 
+        const Eigen::Matrix3d& essential, 
+        const Eigen::Vector3d& xy1_cur
+    ) {
+        Eigen::Vector3d exy1_cur = essential * xy1_cur;
+        Eigen::Vector3d etxy1_ref = essential.transpose() * xy1_ref;
+        double err = xy1_ref.transpose() * exy1_cur;
+        return err * err / (exy1_cur.head<2>().squaredNorm() + etxy1_ref.head<2>().squaredNorm());
+    }
+
 
     /**
      * other utils

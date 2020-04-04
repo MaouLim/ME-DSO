@@ -14,24 +14,29 @@ namespace vslam {
     { }
 
     void map_point::set_observed_by(const feature_ptr& _feat) {
-        observations.push_front(_feat);
+        observations.emplace_front(_feat);
         ++n_obs;
     }
 
     feature_ptr map_point::find_observed(const frame_ptr& _frame) const {
+        assert(_frame);
         for (auto& each_ob : observations) {
-            if (_frame == each_ob->host_frame) {
-                return each_ob;
+            auto exist_ob = each_ob.lock();
+            if (!exist_ob) { continue; }
+            if (_frame == exist_ob->host_frame.lock()) {
+                return exist_ob;
             }
         }
         return nullptr;
     }
 
-    bool map_point::remove_obserbed(const frame_ptr& _frame) {
+    bool map_point::remove_observed_by(const frame_ptr& _frame) {
+        assert(_frame);
         auto itr = observations.begin();
         while (itr != observations.end()) {
-            if (_frame == (*itr)->host_frame) {
+            if (_frame == _get_frame(*itr)) {
                 observations.erase(itr);
+                --n_obs;
                 return true;
             }
             ++itr;
@@ -43,6 +48,8 @@ namespace vslam {
     map_point::find_closest_observed(
         const frame_ptr& _frame, const Eigen::Vector3d& _cam_center
     ) const {
+        assert(_frame);
+
         Eigen::Vector3d view_orien = _cam_center - position;
         view_orien.normalize();
 
@@ -51,12 +58,16 @@ namespace vslam {
 
         auto itr = observations.begin();
         while (itr != observations.end()) {
-            Eigen::Vector3d orien = (*itr)->host_frame->cam_center() - position;
+            auto exist_ob = itr->lock();
+            if (!exist_ob) { ++itr; continue; }
+            auto exist_host_frame = exist_ob->host_frame.lock();
+            if (!exist_host_frame) { ++itr; continue; }
+            Eigen::Vector3d orien = exist_host_frame->cam_center() - position;
             orien.normalize();
             double cos_theta = view_orien.dot(orien);
             if (max_cos < cos_theta) {
                 max_cos = cos_theta;
-                res = *itr;
+                res = exist_ob;
             }
             ++itr;
         }
@@ -78,12 +89,17 @@ namespace vslam {
             H.setZero(); b.setZero();
 
             for (auto& feature_observed : observations) {
-                auto& host_frame = feature_observed->host_frame;
+
+                auto exist_ob = feature_observed.lock();
+                if (!exist_ob) { continue; }
+                auto host_frame = exist_ob->host_frame.lock();
+                if (!host_frame) { continue; }
+
                 Eigen::Vector3d p_c = host_frame->t_cw * position;
                 Matrix23d jacc   = -1.0 * jaccobian_dxy1dxyz(p_c, host_frame->t_cw.rotationMatrix());
                 Matrix32d jacc_t = jacc.transpose();
                 Eigen::Vector2d p_xy1 = (p_c / p_c[2]).head<2>();
-                Eigen::Vector2d err = feature_observed->xy1.head<2>() - p_xy1;
+                Eigen::Vector2d err = exist_ob->xy1.head<2>() - p_xy1;
                 H.noalias() +=  jacc_t * jacc;
                 b.noalias() += -jacc_t * err;
                 chi2 += err.squaredNorm();

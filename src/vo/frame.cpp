@@ -27,7 +27,7 @@ namespace vslam {
         pyramid = utils::create_pyramid(_img, pyr_levels, pyr_levels);
     }
 
-    bool frame::visible(const Eigen::Vector2d& p_p, double border = 0.0) const {
+    bool frame::visible(const Eigen::Vector2d& p_p, double border) const {
         return camera->visible(p_p, border);
     }
 
@@ -50,7 +50,7 @@ namespace vslam {
         dvec.reserve(n_features);
 
         for (auto& each_feat : features) {
-            double d = (t_cw * each_feat->host_map_point->position).z();
+            double d = (t_cw * each_feat->map_point_describing->position).z();
             dvec.push_back(d);
             min = std::min(min, d);
         }

@@ -25,10 +25,6 @@ namespace vslam {
         good_features_t        good_features;
         pyramid_t              pyramid;       // pyramid images, 0 level is the original.
 
-        // std::vector<cv::Mat>    pyr_gx;   // gx = dI/du
-        // std::vector<cv::Mat>    pyr_gy;   // gy = dI/dv
-        // std::vector<cv::Mat>    pyr_grad; // grad = sqrt(gx^2+gy^2)
-
         frame(const camera_ptr& _cam, const cv::Mat& _img, double _timestamp, bool _key_frame = false);
         ~frame() = default;
 

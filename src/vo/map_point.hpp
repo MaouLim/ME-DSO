@@ -35,7 +35,7 @@ namespace vslam {
 
         int                     id;
         Eigen::Vector3d         position; // world coordinate system
-        std::list<feature_ptr>  observations;
+        std::list<feature_wptr> observations;
         size_t                  n_obs;
         int                     last_pub_timestamp;
         int                     last_proj_kf_id;
@@ -48,8 +48,9 @@ namespace vslam {
         ~map_point() = default;
 
         void set_observed_by(const feature_ptr& _feat);
+        feature_ptr last_observed() const;
         feature_ptr find_observed(const frame_ptr& _frame) const;
-        bool remove_obserbed(const frame_ptr& _frame);
+        bool remove_observed_by(const frame_ptr& _frame);
         feature_ptr find_closest_observed(const frame_ptr& _frame, const Eigen::Vector3d& _cam_center) const;
 
         /**
@@ -60,6 +61,8 @@ namespace vslam {
 
     private:
         static int _seq_id; // to generate id;
+
+        static frame_ptr _get_frame(const feature_wptr& ob);
     };
 }
 

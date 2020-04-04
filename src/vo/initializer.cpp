@@ -5,6 +5,7 @@
 #include <vo/frame.hpp>
 #include <vo/camera.hpp>
 #include <vo/map_point.hpp>
+#include <vo/homography.hpp>
 
 namespace vslam {
 
@@ -20,6 +21,8 @@ namespace vslam {
         config::get<double>("map_scale");
     const double initializer::viewport_border = 
         config::get<double>("viewport_border");
+    const double initializer::max_reprojection_err = 
+        config::get<double>("max_reprojection_err");
 
     initializer::op_result 
     initializer::set_first(const frame_ptr& first) 
@@ -60,14 +63,29 @@ namespace vslam {
             return SHIFT_NOT_ENOUGH;
         }
 
-        _calc_homography(/* TODO */);
-        double total_err = _compute_inliers_and_triangulate(/**/);
+        if (!_calc_homography(cur->camera->err_mul2(), max_reprojection_err)) { 
+#ifdef _ME_VSLAM_DEBUG_INFO_
+            std::cout << "Failed to compute pose from homography matrix." << std::endl;
+#endif      
+            return FAILED_CALC_HOMOGRAPHY;
+        }
+        double total_err = _compute_inliers_and_triangulate(max_reprojection_err);
         size_t n_inliers = _inliers.size();
 
 #ifdef _ME_VSLAM_DEBUG_INFO_
             std::cout << "Inliers: " << n_inliers << std::endl;
+            std::cout << "Ratio of inliers: " << double(n_inliers) / _xy1s_ref.size() << std::endl;
             std::cout << "Total reprojection error: " << total_err << std::endl;
 #endif      
+        /**
+         * @todo minimun requirement of the number of the inliers 
+         *       minimun requirement of the ratio of the inliers
+         * 
+         * double inliers_ratio = double(n_inliers) / _xy1s_ref.size();
+         * if (inliers_ratio < min_inliers_ratio) {
+         *     return INLIERS_NOT_ENOUGH;
+         * }
+         */ 
         if (n_inliers < min_inliers) {
             return INLIERS_NOT_ENOUGH;
         }
@@ -150,7 +168,7 @@ namespace vslam {
         return _uvs_ref.size();
     }
 
-    size_t initializer::_rerange_tracked_uvs(const std::vector<uchar>& status) {
+    size_t initializer::_rerange(const std::vector<uchar>& status) {
 
         assert(_uvs_ref.size() ==  _uvs_cur.size() && 
                _uvs_ref.size() == _xy1s_ref.size() &&
@@ -201,7 +219,7 @@ namespace vslam {
             cv::Size2i(lk_win_sz, lk_win_sz), max_pyramid, criteria, cv::OPTFLOW_USE_INITIAL_FLOW
         );
 
-        size_t n_tracked = _rerange_tracked_uvs(status);
+        size_t n_tracked = _rerange(status);
 
         /**
          * calculate the xy1s and disparities
@@ -221,16 +239,15 @@ namespace vslam {
         return n_tracked;
     }
 
-    void initializer::_calc_homography(double focal_len, double reproject_threshold) {
-        assert(_xy1s_ref.size() == _xy1s_cur.size());
-        
+    bool initializer::_calc_homography(
+        double err_mul2, double reproject_threshold
+    ) {
+        //assert(_xy1s_ref.size() == _xy1s_cur.size());
         // remove the 1 (3rd-dimession xy1) seems to be useless
-        std::vector<Eigen::Vector2d> xys_ref; 
-        std::vector<Eigen::Vector2d> xys_cur;
-
+        // std::vector<Eigen::Vector2d> xys_ref; 
+        // std::vector<Eigen::Vector2d> xys_cur;
         // xys_ref.reserve(xy1s_ref.size());
         // xys_cur.reserve(xy1s_cur.size());
-
         // size_t count_pts = 0;
         // for (size_t i = 0; i < status.size(); ++i) {
         //     if (!status[i]) { continue; }
@@ -238,45 +255,39 @@ namespace vslam {
         //     xys_cur.emplace_back(xy1s_cur[i].x(), xy1s_cur[i].y());
         //     ++count_pts;
         // }
-
-
+        homography solver(reproject_threshold, err_mul2, _xy1s_ref, _xy1s_cur);
+        return solver.calc_pose_from_matches(t_cr);
     }
 
-    double _compute_inliers_and_triangulate(
-        const std::vector<Eigen::Vector3d>& xy1s_ref, 
-        const std::vector<Eigen::Vector3d>& xy1s_cur, 
-        const std::vector<uchar>&           status,
-        const Sophus::SE3d&                 t_cr,
-        double                              reproject_threshold,
-        std::vector<int>&                   inliers,
-        std::vector<int>&                   outliers,
-        std::vector<Eigen::Vector3d>&       xyzs_cur
+    double initializer::_compute_inliers_and_triangulate(
+        double reproject_threshold
     ) {
-        inliers.clear();  inliers.reserve(status.size());
-        outliers.clear(); outliers.reserve(status.size());
-        xyzs_cur.clear(); xyzs_cur.reserve(status.size());
+        size_t n_matches = _xy1s_ref.size();
+
+         _inliers.clear();  _inliers.reserve(n_matches);
+        _xyzs_cur.clear(); _xyzs_cur.reserve(n_matches);
 
         double total_err = 0.0;
 
-        for (size_t i = 0; i < status.size(); ++i) {
-            if (!status[i]) { continue; }
+        for (size_t i = 0; i < n_matches; ++i) {
 
-            Eigen::Vector3d xyz_cur = utils::triangulate(xy1s_ref[i], xy1s_cur[i], t_cr);
-            xyzs_cur.push_back(xyz_cur);
+            Eigen::Vector3d xyz_cur = utils::triangulate(_xy1s_ref[i], _xy1s_cur[i], t_cr);
+            _xyzs_cur.push_back(xyz_cur);
 
-            double err_ref = utils::reproject_err(t_cr.inverse() * xyz_cur, xy1s_ref[i]);
-            double err_cur = utils::reproject_err(xyz_cur, xy1s_cur[i]);
+            double err_ref = utils::reproject_err(t_cr.inverse() * xyz_cur, _xy1s_ref[i]);
+            double err_cur = utils::reproject_err(xyz_cur, _xy1s_cur[i]);
 
             /**
-             * outliers is which reprojection error is too large or depth is less than zero
+             * outliers is which reprojection error is too 
+             * large or depth is less than zero
              */
             if (reproject_threshold < err_ref || 
                 reproject_threshold < err_cur || 
                 xyz_cur.z() < 0.0)               
             {
-                outliers.push_back(i);
+                continue;
             }
-            else { inliers.push_back(i); total_err += (err_ref + err_cur); }
+            else { _inliers.push_back(i); total_err += (err_ref + err_cur); }
         }
  
         return total_err;

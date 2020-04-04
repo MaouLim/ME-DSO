@@ -171,8 +171,10 @@ namespace vslam {
             }
             decom.score = -n_positives;
         }
+
         sort(decompositions.begin(), decompositions.end());
         decompositions.resize(4);
+
         for (size_t i = 0; i  <decompositions.size(); ++i) {
             auto& decom = decompositions[i];
             int n_positives = 0;
@@ -183,8 +185,10 @@ namespace vslam {
             };
             decom.score = -n_positives;
         }
+
         sort(decompositions.begin(), decompositions.end());
         decompositions.resize(2);
+
         // According to Faugeras and Lustman, ambiguity exists if the two scores are equal
         // but in practive, better to look at the ratio!
         double ratio = (double) decompositions[1].score / (double) decompositions[0].score;
@@ -200,8 +204,7 @@ namespace vslam {
                 Eigen::Matrix3d essential = t_cr.rotationMatrix() * utils::hat(t_cr.translation());
                 double total_err = 0;
                 for (size_t j = 0; j < xy1s_ref.size(); ++j) {
-                    // TODO
-                    double err = sampsonusError(xy1s_ref[j], essential, xy1s_cur[j]);
+                    double err = utils::sampsonus_err(xy1s_ref[j], essential, xy1s_cur[j]);
                     if (err_squared_limit < err) { err = err_squared_limit; }
                     total_err += err;
                 }
