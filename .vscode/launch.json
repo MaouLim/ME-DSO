@@ -8,7 +8,7 @@
             "name": "test",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/TestMEDSO",
+            "program": "${workspaceFolder}/build/VLSAMTest",
             "args": [],
             "stopAtEntry": true,
             "cwd": "${workspaceFolder}",

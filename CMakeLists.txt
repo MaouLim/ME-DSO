@@ -20,5 +20,8 @@ include_directories(${Sophus_INCLUDE_DIRS})
 include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${fast_INCLUDE_DIRS})
 
-add_executable(TestMEDSO test/test.cpp)
-target_link_libraries(TestMEDSO ${OpenCV_LIBS} ${fast_LIBRARIES})
+add_executable(VSLAMTest test/test_vslam.cpp)
+target_link_libraries(VSLAMTest ${OpenCV_LIBS} ${fast_LIBRARIES})
+
+add_executable(ThreadingTest test/test_threading.cpp)
+target_link_libraries(ThreadingTest ${OpenCV_LIBS} ${fast_LIBRARIES})
