@@ -1,22 +1,21 @@
 #ifndef _ME_VSLAM_THREADING_HPP_
 #define _ME_VSLAM_THREADING_HPP_
 
-#include <thread>
 #include <functional>
+#include <thread>
+
 #include <utils/messaging.hpp>
 
 namespace utils {
 
     template <
-        typename _ParameterMessage, 
-        typename _ResultMessage,
-        typename _ReusltHandler = std::function<void(const _ResultMessage&)>
+        typename _Parameter, 
+        typename _Callable = std::function<void(_Parameter&)>
     >
     struct async_executor {
 
-        using param_type     = _ParameterMessage;
-        using result_type    = _ResultMessage;
-        using result_handler = _ReusltHandler;
+        using param_type   = _Parameter;
+        using handler_type = _Callable;
 
         async_executor() = default;
         explicit async_executor(size_t queue_sz) : _queue(queue_sz) { }
@@ -25,28 +24,24 @@ namespace utils {
         bool start();
         bool stop();
         bool join();
-        void set_result_handler(const result_handler& handler) { _handler = handler; }
 
         virtual bool commit(const param_type& param) { _queue.wait_and_push(param); }
+        void add_handler(handler_type&& handler) { _handlers.push_back(handler); }
 
     protected:
-        virtual result_type process(param_type& param) = 0;
-        void _main_loop();
+        bool                      _running;
+        std::thread               _thread;
+        message_queue             _queue;
+        std::vector<handler_type> _handlers;
 
-        bool           _running;
-        std::thread    _thread;
-        message_queue  _queue;
-        result_handler _handler;
+    private:
+        void _main_loop();
     };
 
     template <
-        typename _ParameterMessage, 
-        typename _ResultMessage,
-        typename _ReusltHandler
+        typename _Parameter, typename _Callable
     >
-    bool async_executor<
-        _ParameterMessage, _ResultMessage, _ReusltHandler
-    >::start() {
+    bool async_executor<_Parameter, _Callable>::start() {
         if (_running) { return false; }
         _thread = std::thread(&_main_loop, this);
         _running = true;
@@ -54,13 +49,9 @@ namespace utils {
     }
 
     template <
-        typename _ParameterMessage, 
-        typename _ResultMessage,
-        typename _ReusltHandler
+        typename _Parameter, typename _Callable
     >
-    bool async_executor<
-        _ParameterMessage, _ResultMessage, _ReusltHandler
-    >::stop() {
+    bool async_executor<_Parameter, _Callable>::stop() {
         if (!_running) { return false; }
         _queue.wait_and_push(stop_signal());
         _running = false;
@@ -68,13 +59,9 @@ namespace utils {
     }
 
     template <
-        typename _ParameterMessage, 
-        typename _ResultMessage,
-        typename _ReusltHandler
+        typename _Parameter, typename _Callable
     >
-    bool async_executor<
-        _ParameterMessage, _ResultMessage, _ReusltHandler
-    >::join() {
+    bool async_executor<_Parameter, _Callable>::join() {
         if (!_thread.joinable()) { return false; }
         _thread.join();
         _thread = nullptr;
@@ -82,21 +69,18 @@ namespace utils {
     }
 
     template <
-        typename _ParameterMessage, 
-        typename _ResultMessage,
-        typename _ReusltHandler
+        typename _Parameter, typename _Callable
     >
-    void async_executor<
-        _ParameterMessage, _ResultMessage, _ReusltHandler
-    >::_main_loop() {
+    void async_executor<_Parameter, _Callable>::_main_loop() {
 
         while (_running) {
             auto msg_ptr = _queue.wait_and_pop();
             stop_signal* stop = dynamic_cast<stop_signal*>(msg_ptr.get());
             if (!stop) { break; }
             param_type* param = dynamic_cast<param_type*>(msg_ptr.get());
-            auto res = process(*param);
-            if (_handler) { _handler(res); }
+            for (auto& func_call : _handlers) {
+                func_call(*param);
+            }
         }
 
         // clean up the rest parameters those are not been executed

@@ -33,9 +33,11 @@ namespace vslam {
         config::get<int>("max_seed_lifetime");
 
     depth_filter::depth_filter(
-        const detector_ptr& _det, const result_handler& _callable
-    ) : base_type(max_queue_sz) , _detector(_det), _count_key_frames(0) {
-        set_result_handler(_callable);
+        const detector_ptr& _det, const converged_callback& _cb
+    ) : base_type(max_queue_sz), 
+        _detector(_det), _callback(_cb), _count_key_frames(0) 
+    { 
+        add_handler(std::bind(&_handle_param, this, std::placeholders::_1));
     }
 
     bool depth_filter::commit(const param_type& param) {
@@ -53,8 +55,7 @@ namespace vslam {
         }
     }
 
-    depth_filter::result_type 
-    depth_filter::process(param_type& param) {
+    void depth_filter::_handle_param(param_type& param) {
         if (param.frame->key_frame) {
             _queue.clear();
             _initialize_seeds(param.frame);
@@ -139,7 +140,7 @@ namespace vslam {
             new_mp->set_observed_by(itr->host_feature);
             itr->host_feature->map_point_describing = new_mp;
 
-            _handler(_df_result_msg(new_mp, itr->sigma2));
+            _callback(new_mp, itr->sigma2);
             itr = _seeds.erase(itr);
             return;
         }

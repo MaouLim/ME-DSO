@@ -67,7 +67,7 @@ namespace vslam {
 
             for (auto& each : nonmax_corners) {
                 fast::fast_xy& xy = fast_corners[each];
-                int index = cell_index(xy.x, xy.y, i);
+                int index = cell_index({ xy.x, xy.y }, i);
                 if (grid_occupied[index]) { continue; }
 
                 float score = utils::shi_tomasi_score(pyramid[i], xy.x, xy.y);

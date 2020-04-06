@@ -1,6 +1,8 @@
 #ifndef _ME_VSLAM_DEPTH_FILTER_HPP_
 #define _ME_VSLAM_DEPTH_FILTER_HPP_
 
+
+
 #include <common.hpp>
 #include <utils/threading.hpp>
 
@@ -40,30 +42,30 @@ namespace vslam {
         utils::message_catagory catagory() const { return utils::DATA; }
     };
 
-    struct _df_result_msg : utils::message_base {
+    // struct _df_result_msg : utils::message_base {
 
-        map_point_ptr converged;
-        double        sigma2;
+    //     map_point_ptr converged;
+    //     double        sigma2;
 
-        _df_result_msg(const map_point_ptr& _converged_seed, double sig2) : 
-            converged(_converged_seed), sigma2(sig2) { }
-        virtual ~_df_result_msg() = default;
+    //     _df_result_msg(const map_point_ptr& _converged_seed, double sig2) : 
+    //         converged(_converged_seed), sigma2(sig2) { }
+    //     virtual ~_df_result_msg() = default;
 
-        utils::message_catagory catagory() const { return utils::DATA; }
-    };
+    //     utils::message_catagory catagory() const { return utils::DATA; }
+    // };
 
     /**
      * @brief implement the depth filter used by SVO, 
      *        ref 'Video-based, Real-Time Multi View Stereo'
      */
     struct depth_filter : 
-        utils::async_executor<_df_param_msg, _df_result_msg> {
+        utils::async_executor<_df_param_msg> {
         
-        using base_type      = utils::async_executor<_df_param_msg, _df_result_msg>;
-        using param_type     = typename base_type::param_type;
-        using result_type    = typename base_type::result_type;
-        using result_handler = typename base_type::result_handler;
-        using lock_t         = std::lock_guard<std::mutex>;
+        using base_type          = utils::async_executor<_df_param_msg>;
+        using param_type         = typename base_type::param_type;
+        using handler_type       = typename base_type::handler_type;
+        using converged_callback = std::function<void(const map_point_wptr&, double)>;
+        using lock_t             = std::lock_guard<std::mutex>;
 
         static const size_t max_queue_sz;
         static const double min_corner_score;
@@ -74,24 +76,22 @@ namespace vslam {
         //     double seed_converge_thresh;
         // } options;
 
-        depth_filter(const detector_ptr& _det, const result_handler& _callable);
+        depth_filter(const detector_ptr& _det, const converged_callback& _cb);
         virtual ~depth_filter();
 
         bool commit(const param_type& param) override;
 
-    protected:
-    
-        result_type process(param_type& param) override;
-
     private:
         using seed_iterator = std::list<map_point_seed>::iterator;
 
+        void _handle_param(param_type& param);
         void _initialize_seeds(const frame_ptr& kf);
         void _update_seeds(const frame_ptr& frame);
         void _handle_seed_itr(const frame_ptr& cur, seed_iterator& itr);
 
         static void _update(double x, double tau2, map_point_seed& seed);
 
+        converged_callback        _callback;
         detector_ptr              _detector;
         utils::atomic_flag        _new_key_frame;
         size_t                    _count_key_frames;
