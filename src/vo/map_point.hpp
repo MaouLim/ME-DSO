@@ -3,9 +3,6 @@
 
 #include <common.hpp>
 
-#define CONST_COS_60 0.5
-#define CONST_COS_45 0.70711
-
 namespace vslam {
 
     // struct depth_info {

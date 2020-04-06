@@ -75,4 +75,8 @@ namespace vslam {
     using pyramid_t   = std::vector<cv::Mat>;
 }
 
+#define CONST_EPS    1e-8
+#define CONST_COS_60 0.5
+#define CONST_COS_45 0.70711
+
 #endif

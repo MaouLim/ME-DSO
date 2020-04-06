@@ -51,7 +51,8 @@ namespace vslam {
 
         virtual void detect(frame_ptr host, double threshold, feature_set& features) = 0;
 
-        void set_grid_occupied(int x, int y);
+        void set_grid_occupied(const Eigen::Vector2d& uv);
+        void set_grid_occupied(const feature_set& features);
 
     protected:
         int               cell_sz;
@@ -61,7 +62,7 @@ namespace vslam {
         std::vector<bool> grid_occupied;
 
         void reset();
-        int cell_index(int x, int y, size_t level);
+        int cell_index(const Eigen::Vector2d& uv, size_t level);
     };
 
     abstract_detector::abstract_detector(
@@ -73,8 +74,16 @@ namespace vslam {
         grid_occupied.resize(grid_rows * grid_cols, false);
     }
 
-    inline void abstract_detector::set_grid_occupied(int x, int y) {
-        grid_occupied[cell_index(x, y, 0)] = true;
+    inline void abstract_detector::set_grid_occupied(const Eigen::Vector2d& uv) {
+        grid_occupied[cell_index(uv, 0)] = true;
+    }
+
+    inline void abstract_detector::set_grid_occupied(
+        const feature_set& features
+    ) {
+        for (const auto& each_feat : features) {
+            set_grid_occupied(each_feat->uv);
+        }
     }
 
     inline void abstract_detector::reset() {
@@ -82,9 +91,9 @@ namespace vslam {
     }
  
     inline int 
-    abstract_detector::cell_index(int x, int y, size_t level = 0) {
+    abstract_detector::cell_index(const Eigen::Vector2d& uv, size_t level) {
         int scale = (1 << level);
-        return int(scale * y / cell_sz) * grid_cols + int(scale * x / cell_sz);
+        return int(scale * uv[1] / cell_sz) * grid_cols + int(scale * uv[0] / cell_sz);
     }
 
     struct fast_detector : abstract_detector {

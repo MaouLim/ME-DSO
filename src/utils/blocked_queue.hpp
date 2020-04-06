@@ -1,20 +1,10 @@
 #ifndef _ME_VSLAM_BLOCKED_QUEUE_HPP_
 #define _ME_VSLAM_BLOCKED_QUEUE_HPP_
 
-namespace std
-{
-    template <typename _Tp>
-    class shared_ptr;
-    
-    template <typename _Tp>
-    class allocator;
-
-    template <
-        typename _Tp, 
-        typename _Alloc = std::allocator<_Tp>
-    >
-    class deque;
-} // namespace std
+#include <memory>
+#include <deque>
+#include <mutex>
+#include <condition_variable>
 
 namespace utils {
 
@@ -47,6 +37,30 @@ namespace utils {
 		/* uncopyable */
 		bounded_blocking_queue(const self_type&) = delete;
 		self_type& operator=(const self_type&) = delete;
+
+		/**
+		 * @brief force to push a item immediately even if the queue is full,
+		 *        if the queue is full, the front element of the queue will be
+		 *        pop out.
+		 */
+		void force_to_push(const value_type& item, value_type& out) {
+			std::unique_lock<std::mutex> locker(m_mutex);
+			if (this->_full()) { out = m_container.front(); m_container.pop_front();  }
+			m_container.push_back(item);
+			m_empty.notify_one();
+		}
+
+		pointer force_to_push(const value_type& item) {
+			std::unique_lock<std::mutex> locker(m_mutex);
+			std::shared_ptr<value_type> ptr = nullptr;
+			if (this->_full()) { 
+				ptr = std::make_shared<value_type>(m_container.front()); 
+				m_container.pop_front();
+			}
+			m_container.push_back(item);
+			m_empty.notify_one();
+			return ptr;
+		}
 
 		void wait_and_push(const value_type& item) {
 			std::unique_lock<std::mutex> locker(m_mutex);
@@ -116,6 +130,12 @@ namespace utils {
 			if (this->_empty()) { return pointer(nullptr); }
 			auto ptr = std::make_shared<value_type>(m_container.back());
 			return ptr;
+		}
+
+		void clear() {
+			std::lock_guard<std::mutex> locker(m_mutex);
+			m_container.clear();
+			m_full.notify_one();
 		}
 
 	private:

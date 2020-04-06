@@ -189,6 +189,30 @@ namespace utils {
         return err * err / (exy1_cur.head<2>().squaredNorm() + etxy1_ref.head<2>().squaredNorm());
     }
 
+    /**
+     * @brief compute the depth uncertainty
+     * @cite  REMODE: Probabilistic, Monocular Dense Reconstruction in Real Time
+     * @param p        the coordinate in the ref
+     * @param trans_cr the translation from ref to cur:
+     *                 trans_cr = translation_component(t_rc)
+     *                          = t_cr^(-1).translation()
+     */ 
+    inline double calc_depth_cov(
+        const Eigen::Vector3d& p, 
+        const Eigen::Vector3d& trans_cr, 
+        double focal_len
+    ) {
+        double p_norm = p.norm();
+        double t_norm = trans_cr.norm();
+        Eigen::Vector3d f = p / p_norm;
+        Eigen::Vector3d a = p - trans_cr;
+        double alpha = std::acos(f.dot(trans_cr) / t_norm);
+        double beta  = std::acos(-a.dot(f) / (a.norm() * t_norm));
+        double beta_plus = beta + 2.0 * atan(0.5 / focal_len);
+        double gamma = M_PI - alpha - beta_plus;
+        double p_plus_norm = t_norm * std::sin(beta_plus) / std::sin(gamma);
+        return std::abs(p_plus_norm - p_norm);
+    }
 
     /**
      * other utils
