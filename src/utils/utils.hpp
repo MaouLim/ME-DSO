@@ -37,6 +37,47 @@ namespace utils {
         cv::resize(src, dst, cv::Size(), scale, scale, cv::INTER_CUBIC);
     }
 
+    inline bool in_image(
+        const cv::Mat& img, double x, double y, double border = 0.
+    ) {
+        assert(0.0 <= border);
+        return border <= x && int(x + border) < img.cols && 
+               border <= y && int(y + border) < img.rows;
+    }
+
+    /**
+     * @brief bilinear interpolate algorithm
+     */ 
+    template <typename _DType>
+    double bilinear_interoplate8u(
+        const cv::Mat& img, double u, double v
+    ) {
+        int x = std::floor(u);
+        int y = std::floor(v);
+        double dx = u - x;
+        double dy = v - y;
+
+        //         dx
+        // (v00)-************-(v01)
+        //    dy *   |      *
+        //       *---*-(u,v)*
+        //       *          *
+        //       *          *
+        // (v10)-**********-(v11)
+
+        double w00 = (1. - dx) * (1. - dy);
+        double w01 = dx * (1. - dy);
+        double w10 = (1. - dx) * dy;
+        double w11 = dx * dy;
+
+        _DType v00 = img.at<_DType>(y, x);
+        _DType v10 = img.at<_DType>(y + 1, x);
+        _DType v01 = img.at<_DType>(y, x + 1);
+        _DType v00 = img.at<_DType>(y + 1, x + 1);
+
+        return w00 * v00 + w01 * v01 + w10 * v10 + w11 * v11;
+    }
+
     /**
      * @note require image type CV_8UC1
      */ 

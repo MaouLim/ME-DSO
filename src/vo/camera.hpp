@@ -31,7 +31,7 @@ namespace vslam {
          *             to world coordinate system
          */ 
         Eigen::Vector3d pixel2world(
-            const Eigen::Vector2d& p_p, const Sophus::SE3d& t_wc, double depth = 1.0) const;
+            const Eigen::Vector2d& p_p, const Sophus::SE3d& t_wc, double z = 1.0) const;
 
         /**
          * @param p_p    2d pixel point (or called uv)
@@ -49,9 +49,9 @@ namespace vslam {
 
     inline Eigen::Vector3d 
     abstract_camera::pixel2world(
-        const Eigen::Vector2d& p_p, const Sophus::SE3d& t_wc, double depth
+        const Eigen::Vector2d& p_p, const Sophus::SE3d& t_wc, double z
     ) const {
-        return t_wc * this->pixel2cam(p_p, depth);
+        return t_wc * this->pixel2cam(p_p, z);
     }
 
     inline bool 
@@ -72,7 +72,7 @@ namespace vslam {
         virtual ~pinhole_camera() = default;
 
         Eigen::Vector2d cam2pixel(const Eigen::Vector3d& p_c) const override;
-        Eigen::Vector3d pixel2cam(const Eigen::Vector2d& p_p, double depth = 1.0) const override;
+        Eigen::Vector3d pixel2cam(const Eigen::Vector2d& p_p, double z = 1.0) const override;
         double err_mul()  const override { return std::abs(fx * fy); }
         double err_mul2() const override { return std::abs(fx); }
 
@@ -96,9 +96,9 @@ namespace vslam {
 
     inline Eigen::Vector3d 
     pinhole_camera::pixel2cam(
-        const Eigen::Vector2d& p_p, double depth
+        const Eigen::Vector2d& p_p, double z
     ) const {
-        return { (p_p[0] * depth - cx) / fx,  (p_p[1] * depth - cy) / fy, depth };
+        return { (p_p[0] * z - cx) / fx,  (p_p[1] * z - cy) / fy, z };
     }
 
     inline Eigen::Matrix3d pinhole_camera::eigen_mat() const {
