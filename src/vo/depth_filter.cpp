@@ -105,7 +105,9 @@ namespace vslam {
         auto ref = itr->host_feature->host_frame.lock();
         if (!ref) { assert(false); return; }
 
-        Eigen::Vector3d xyz_ref = itr->host_feature->xy1 / itr->mu;
+        Eigen::Vector3d xy1_ref = itr->host_feature->xy1; 
+        xy1_ref.normalize();
+        Eigen::Vector3d xyz_ref = xy1_ref / itr->mu;
         Eigen::Vector3d xyz_world = ref->t_wc * xyz_ref;
         if (!cur->visible(xyz_world)) {
             ++itr; return;

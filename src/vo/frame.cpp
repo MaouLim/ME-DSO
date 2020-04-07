@@ -8,7 +8,6 @@
 namespace vslam {
 
     int    frame::_seq_id    = 0;
-    double frame::pyr_scale  = config::get<double>("pyr_scale");
     size_t frame::pyr_levels = config::get<int>("pyr_levels");
 
     frame::frame(
@@ -24,7 +23,7 @@ namespace vslam {
         for (auto& each : good_features) {
             each = feature_ptr(nullptr);
         }
-        pyramid = utils::create_pyramid(_img, pyr_levels, pyr_levels);
+        pyramid = utils::create_pyramid(_img, pyr_levels);
     }
 
     bool frame::visible(const Eigen::Vector2d& p_p, double border) const {

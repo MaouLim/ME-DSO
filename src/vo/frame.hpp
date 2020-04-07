@@ -11,7 +11,6 @@ namespace vslam {
 
         using good_features_t = std::array<feature_ptr, N_GOOD_FEATURES>;
 
-        static double pyr_scale;
         static size_t pyr_levels;
 
         bool                   key_frame;

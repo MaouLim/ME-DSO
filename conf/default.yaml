@@ -4,7 +4,6 @@
 min_corner_score:     0.1
 cell_sz:              10
 pyr_levels:           5
-pyr_scale:            0.5
 min_features_to_init: 200
 lk_win_sz:            30
 

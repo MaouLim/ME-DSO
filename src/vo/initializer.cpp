@@ -271,7 +271,8 @@ namespace vslam {
 
         for (size_t i = 0; i < n_matches; ++i) {
 
-            Eigen::Vector3d xyz_cur = utils::triangulate(_xy1s_ref[i], _xy1s_cur[i], t_cr);
+            //same! Eigen::Vector3d xyz_cur = utils::triangulate(_xy1s_ref[i], _xy1s_cur[i], t_cr);
+            Eigen::Vector3d xyz_cur = utils::triangulate_v2(_xy1s_cur[i], _xy1s_ref[i], t_cr);
             _xyzs_cur.push_back(xyz_cur);
 
             double err_ref = utils::reproject_err(t_cr.inverse() * xyz_cur, _xy1s_ref[i]);

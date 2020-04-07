@@ -92,7 +92,7 @@ namespace utils {
     }
 
     inline std::vector<cv::Mat> 
-    create_pyramid(const cv::Mat& img_level0, size_t n_levels, double scale) {
+    create_pyramid(const cv::Mat& img_level0, size_t n_levels, double scale = 0.5) {
         std::vector<cv::Mat> pyramid(n_levels, cv::Mat());
         pyramid[0] = img_level0;
         for (size_t i = 1; i < n_levels; ++i) {
@@ -140,14 +140,14 @@ namespace utils {
 
     /**
      * @brief triangulation
-     *        d1*(x1, y1, 1)' = R*d0*(x0, y0, 1)' + t
-     *    <=> [-R*(x0, y0, 1)', (x1, y1, 1)'] * (d0, d1)' = t
-     *    <=> A * (d0, d1)' = t
-     *    <=> (d0, d1)' = (A' * A)^(-1) * A' * t
+     *        s1*(x1, y1, 1)' = R*s0*(x0, y0, 1)' + t
+     *    <=> [-R*(x0, y0, 1)', (x1, y1, 1)'] * (s0, s1)' = t
+     *    <=> A * (s0, s1)' = t
+     *    <=> (s0, s1)' = (A' * A)^(-1) * A' * t
      * @param xy1_ref (x0, y0, 1)
      * @param xy1_cur (x1, y1, 1)
      * @param t_cr pose from ref to cur -> (R, t)
-     * @return (d1*(x1, y1, 1)' + R*d0*(x0, y0, 1)' + t) * 0.5
+     * @return (s1*(x1, y1, 1)' + R*s0*(x0, y0, 1)' + t) * 0.5
      */       
     inline Eigen::Vector3d triangulate(
         const Eigen::Vector3d& xy1_ref, 
@@ -156,13 +156,43 @@ namespace utils {
     ) {
         const auto& rot   = t_cr.rotationMatrix();
         const auto& trans = t_cr.translation();
-
         vslam::Matrix23d a_t;
         a_t.block<1, 3>(0, 0) = -(rot * xy1_ref).transpose();
         a_t.block<1, 3>(1, 0) = xy1_cur.transpose();
-        Eigen::Vector2d d = (a_t * a_t.transpose()).inverse() * a_t * trans;
+        Eigen::Vector2d s = (a_t * a_t.transpose()).inverse() * a_t * trans;
         // return the mid point
-        return (t_cr * xy1_ref * d[0] + xy1_cur * d[1]) * 0.5;
+        return (rot * xy1_ref * s[0] + trans + xy1_cur * s[1]) * 0.5;
+    }
+
+    /**
+     * @brief triangulation
+     *        s0*(x0, y0, 1)' = R*s1*(x1, y1, 1)' + t
+     *    <=> [ p0'p0,      -p0'Rp1][s0, s1]' = [p0't, (Rp1)'t]'
+     *        [p0'Rp1, -(Rp1)'(Rp1)]
+     * @param xy1_ref p0 = (x0, y0, 1) 
+     * @param xy1_cur p1 = (x1, y1, 1)
+     * @param t_rc pose from cur to ref -> (R, t)
+     * @return (s0*(x0, y0, 1)' + R*s1*(x1, y1, 1)' + t) * 0.5
+     */   
+    inline Eigen::Vector3d triangulate_v2(
+        const Eigen::Vector3d& xy1_ref, 
+        const Eigen::Vector3d& xy1_cur, 
+        const Sophus::SE3d&    t_rc
+    ) {
+        Eigen::Vector3d trans = t_rc.translation();
+        Eigen::Matrix3d rot   = t_rc.rotationMatrix();
+
+        Eigen::Vector3d f2 = rot * xy1_cur;
+        Eigen::Vector2d b  = { xy1_ref.dot(trans), f2.dot(trans) };
+        Eigen::Matrix2d a;
+        a(0, 0) = xy1_ref.dot(xy1_ref);
+        a(0, 1) = -xy1_ref.dot(f2);
+        a(1, 0) = -a(0, 1);
+        a(1, 1) = -f2.dot(f2);
+        Eigen::Vector2d s = a.inverse() * b;
+        Eigen::Vector3d xm = s[0] * xy1_ref;
+        Eigen::Vector3d xn = s[1] * f2 + trans;
+        return 0.5 * (xm + xn);
     }
 
     /**

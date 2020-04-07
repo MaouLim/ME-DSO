@@ -25,3 +25,6 @@ target_link_libraries(VSLAMTest ${OpenCV_LIBS} ${fast_LIBRARIES})
 
 add_executable(ThreadingTest test/test_threading.cpp)
 target_link_libraries(ThreadingTest ${OpenCV_LIBS} ${fast_LIBRARIES})
+
+add_executable(UtilsTest test/test_utils.cpp)
+target_link_libraries(UtilsTest ${OpenCV_LIBS} ${fast_LIBRARIES})
