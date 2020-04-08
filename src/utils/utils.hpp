@@ -49,7 +49,7 @@ namespace utils {
      * @brief bilinear interpolate algorithm
      */ 
     template <typename _DType>
-    double bilinear_interoplate8u(
+    double bilinear_interoplate(
         const cv::Mat& img, double u, double v
     ) {
         int x = std::floor(u);
@@ -234,6 +234,36 @@ namespace utils {
         Eigen::Vector3d xm = s[0] * xy1_ref;
         Eigen::Vector3d xn = s[1] * f2 + trans;
         return 0.5 * (xm + xn);
+    }
+
+    /**
+     * @warning this function will not validate the depth
+     * @note    when the parameters xy1_ref(cur) replaced 
+     *          by the unit sphere coordinate, the z_ref(cur)
+     *          return the depth(length of p_ref)
+     */ 
+    inline bool 
+    depth_from_triangulate_v2(
+        const Eigen::Vector3d& xy1_ref, 
+        const Eigen::Vector3d& xy1_cur, 
+        const Sophus::SE3d&    t_rc,
+        double&                z_ref,
+        double&                z_cur
+    ) {
+        Eigen::Vector3d trans = t_rc.translation();
+        Eigen::Matrix3d rot   = t_rc.rotationMatrix();
+
+        Eigen::Vector3d f2 = rot * xy1_cur;
+        Eigen::Vector2d b  = { xy1_ref.dot(trans), f2.dot(trans) };
+        Eigen::Matrix2d a;
+        a(0, 0) = xy1_ref.dot(xy1_ref);
+        a(0, 1) = -xy1_ref.dot(f2);
+        a(1, 0) = -a(0, 1);
+        a(1, 1) = -f2.dot(f2);
+        if (a.determinant() < CONST_EPS) { return false; }
+        auto s = a.inverse() * b;
+        z_ref = s[0]; z_cur = s[1];
+        return true;
     }
 
     /**

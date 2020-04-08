@@ -46,10 +46,8 @@ namespace vslam {
 
     feature_ptr 
     map_point::find_closest_observed(
-        const frame_ptr& _frame, const Eigen::Vector3d& _cam_center
+        const Eigen::Vector3d& _cam_center
     ) const {
-        assert(_frame);
-
         Eigen::Vector3d view_orien = _cam_center - position;
         view_orien.normalize();
 
@@ -129,5 +127,11 @@ namespace vslam {
         }
 
         return last_chi2;
+    }
+
+    inline frame_ptr map_point::_get_frame(const feature_wptr& ob) {
+        auto exist_ob = ob.lock();
+        if (!exist_ob) { return nullptr; }
+        return exist_ob->host_frame.lock();
     }
 }

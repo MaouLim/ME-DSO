@@ -13,10 +13,18 @@ namespace vslam {
         virtual ~abstract_camera() = default;
 
         virtual Eigen::Vector2d cam2pixel(const Eigen::Vector3d&) const = 0;
-        virtual Eigen::Vector3d pixel2cam(const Eigen::Vector2d&, double) const = 0;
+        virtual Eigen::Vector3d pixel2cam(const Eigen::Vector2d&, double z = 1.0) const = 0;
         virtual double err_mul() const = 0;
         virtual double err_mul2() const = 0;
         virtual cv::Mat rectify(const cv::Mat& raw) { return raw; }
+
+
+        /**
+         * @brief compute direction of from camera center to pixel point
+         * @param p_p  2d pixel point
+         * @return normalized vector
+         */ 
+        Eigen::Vector3d pixel2cam_unit(const Eigen::Vector2d& p_p) const;
 
         /**
          * @param p_w  3d point in world
@@ -37,8 +45,13 @@ namespace vslam {
          * @param p_p    2d pixel point (or called uv)
          * @param border border size of the viewport
          */ 
-        bool visible(const Eigen::Vector2d& p_p, double border = 0.0) const;
+        bool visible(const Eigen::Vector2d& p_p, double border = 0.0, size_t level = 0) const;
     };
+
+    inline Eigen::Vector3d 
+    abstract_camera::pixel2cam_unit(const Eigen::Vector2d& p_p) const {
+        return this->pixel2cam(p_p, 1.0).normalized();
+    }
 
     inline Eigen::Vector2d 
     abstract_camera::world2pixel(
@@ -55,10 +68,13 @@ namespace vslam {
     }
 
     inline bool 
-    abstract_camera::visible(const Eigen::Vector2d& p_p, double border) const { 
+    abstract_camera::visible(
+        const Eigen::Vector2d& p_p, double border, size_t level
+    ) const { 
         assert(0.0 <= border);
-        return (border <= p_p[0] && int(p_p[0] + border) < width && 
-                border <= p_p[1] && int(p_p[1] + border) < height);
+        Eigen::Vector2d uv_leveln = p_p / (1 << level);
+        return (border <= uv_leveln[0] && int(uv_leveln[0] + border) < width && 
+                border <= uv_leveln[1] && int(uv_leveln[1] + border) < height);
     }
 
     /**

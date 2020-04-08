@@ -7,9 +7,46 @@ namespace vslam {
 
     struct patch_matcher {
         
-        static const int patch_half_sz;
-        static const int path_sz;
+        static constexpr int patch_half_sz = 4;
+        static constexpr int border_sz     = 1;
+        static constexpr int patch_sz      = patch_half_sz * 2;
+        static constexpr int patch_area    = patch_sz * patch_sz;
+
+        static constexpr int patch_with_border_sz   = (patch_half_sz + border_sz) * 2;
+        static constexpr int patch_with_border_area = patch_with_border_sz * patch_with_border_sz;
         
+        static constexpr double min_len_to_epipolar_search = 2.0;
+        static constexpr double epipolar_search_step       = CONST_COS_45;
+
+        patch_matcher() = default;
+        ~patch_matcher() = default;
+
+        bool find_match_and_align(
+            const map_point_ptr& mp, 
+            const frame_ptr&     cur, 
+            Eigen::Vector2d&     uv_cur
+        );
+
+        bool find_match_epipolar_and_align(
+            const frame_ptr&   ref,
+            const frame_ptr&   cur,
+            const feature_ptr& feat_ref,
+            double             depth_est,
+            double             depth_min,
+            double             depth_max,
+            double&            depth
+        );
+    
+    private:
+        uint8_t         _patch[patch_area]                         __attribute__ ((aligned (16)));
+        uint8_t         _patch_with_border[patch_with_border_area] __attribute__ ((aligned (16)));
+        Eigen::Matrix2d _affine_cr;
+        Eigen::Vector2d _epipolar_orien;
+        double          _epipolar_len;
+
+        void _create_patch_from_patch_with_border();
+
+
 
     };
 
@@ -22,6 +59,7 @@ namespace vslam {
          * @param level_ref the pyramid level of the feature
          * @param z_est     the  z(depth) estimation of the point in the ref camera coordinate sys
          * @param t_cr      the SE3 transformation from ref to cur
+         * @return          the affine transformation form ref to cur
          */ 
         Eigen::Matrix2d affine_mat(
             const camera_ptr&      camera, 

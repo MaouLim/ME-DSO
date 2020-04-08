@@ -16,7 +16,7 @@ namespace vslam {
         type_t          type;
         frame_wptr      host_frame;           // in which frame this feature detected 
         map_point_ptr   map_point_describing; // map point which described by this feature
-        Eigen::Vector2d uv;                   // pixel vector 
+        Eigen::Vector2d uv;                   // pixel vector at level 0
         Eigen::Vector3d xy1;                  // uint-bearing vector
         Eigen::Vector2d grad_orien;           // the orientation of the graditude at this pixel
         size_t          level;                // level of pyramid
@@ -106,6 +106,15 @@ namespace vslam {
 
     fast_detector::fast_detector(int _h, int _w, int _cell_sz, size_t _n_levels) : 
         abstract_detector(_h, _w, _cell_sz, _n_levels) { }
+
+
+    namespace alignment {
+
+        bool align_1d();
+        bool align_2d();
+        
+    } // namespace alignment
+    
 }
 
 #endif

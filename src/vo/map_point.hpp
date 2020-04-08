@@ -48,7 +48,14 @@ namespace vslam {
         feature_ptr last_observed() const;
         feature_ptr find_observed(const frame_ptr& _frame) const;
         bool remove_observed_by(const frame_ptr& _frame);
-        feature_ptr find_closest_observed(const frame_ptr& _frame, const Eigen::Vector3d& _cam_center) const;
+
+        /**
+         * @brief find the feature that observes the map point 
+         *        and the view angle between observing from _cam_center and
+         *        the feature is least. 
+         * @param _cam_center view point
+         */ 
+        feature_ptr find_closest_observed(const Eigen::Vector3d& _cam_center) const;
 
         /**
          * @brief minimize the reproject error (on unit-bearing plane)
@@ -61,12 +68,6 @@ namespace vslam {
 
         static frame_ptr _get_frame(const feature_wptr& ob);
     };
-
-    inline frame_ptr map_point::_get_frame(const feature_wptr& ob) {
-        auto exist_ob = ob.lock();
-        if (!exist_ob) { return nullptr; }
-        return exist_ob->host_frame.lock();
-    }
 }
 
 #endif

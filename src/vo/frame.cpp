@@ -26,18 +26,20 @@ namespace vslam {
         pyramid = utils::create_pyramid(_img, pyr_levels);
     }
 
-    bool frame::visible(const Eigen::Vector2d& p_p, double border) const {
-        return camera->visible(p_p, border);
+    inline bool frame::visible(
+        const Eigen::Vector2d& p_p, double border, size_t level
+    ) const {
+        return camera->visible(p_p, border, level);
     }
 
-    bool frame::visible(const Eigen::Vector3d& p_w, double border) const {
-        assert(0.0 <= border);
-
+    inline bool frame::visible(
+        const Eigen::Vector3d& p_w, double border
+    ) const {
         Eigen::Vector3d p_c = t_cw * p_w;
         if (p_c.z() < 0.0) { return false; }
 
         auto uv = camera->cam2pixel(p_c);
-        return camera->visible(uv, border);
+        return camera->visible(uv, border, 0);
     }
 
     void frame::min_and_median_depth(double& min, double& median) const {
