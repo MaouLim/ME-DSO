@@ -380,6 +380,7 @@ namespace vslam {
         }
 
         uv_cur << u, v;
+        return true;
     }
 
 } // namespace vslam
