@@ -5,13 +5,16 @@
 
 namespace vslam {
 
+    
+    template <
+        int _PatchHalfSize = 4
+    >
     struct patch_matcher {
-        
-        static constexpr int patch_half_sz = 4;
+
+        static constexpr int patch_half_sz = _PatchHalfSize;
         static constexpr int border_sz     = 1;
         static constexpr int patch_sz      = patch_half_sz * 2;
         static constexpr int patch_area    = patch_sz * patch_sz;
-
         static constexpr int patch_with_border_sz   = (patch_half_sz + border_sz) * 2;
         static constexpr int patch_with_border_area = patch_with_border_sz * patch_with_border_sz;
         
@@ -35,14 +38,27 @@ namespace vslam {
             Eigen::Vector2d&     uv_cur
         );
 
+        /**
+         * @brief find the matched feature (on cur frame) using searching along 
+         *        the epipolar and estimate the depth of the point described by
+         *        the feature on the ref frame
+         * @param ref       reference frame
+         * @param cur       current frame
+         * @param feat_ref  feature on the reference frame
+         * @param depth_min lower-bound of the depth estimation
+         * @param depth_max upper-bound of the depth estimation
+         * @param depth_est initial depth estimation of the feat_ref, if the
+         *                  function return true, depth_est will be replace by
+         *                  the lastest estimation
+         * @return whether the match is found
+         */
         bool match_epipolar_search(
             const frame_ptr&   ref,
             const frame_ptr&   cur,
             const feature_ptr& feat_ref,
-            double             depth_est,
             double             depth_min,
             double             depth_max,
-            double&            depth
+            double&            depth_est
         );
     
     private:
@@ -56,18 +72,20 @@ namespace vslam {
         
         /**
          * @brief calculate the affine matrix from SE(3)
-         * @param camera    camera model
-         * @param uv_ref    the pixel coordinate of the point on the reference image
-         * @param level_ref the pyramid level of the feature
-         * @param z_est     the  z(depth) estimation of the point in the ref camera coordinate sys
-         * @param t_cr      the SE3 transformation from ref to cur
-         * @return          the affine transformation form ref to cur
+         * @param camera        camera model
+         * @param uv_ref        the pixel coordinate of the point on the reference image
+         * @param level_ref     the pyramid level of the feature
+         * @param z_est         the  z(depth) estimation of the point in the ref camera coordinate sys
+         * @param patch_half_sz the half size of the patch sampled to calculate
+         * @param t_cr          the SE3 transformation from ref to cur
+         * @return              the affine transformation form ref to cur
          */ 
         Eigen::Matrix2d affine_mat(
             const camera_ptr&      camera, 
             const Eigen::Vector2d& uv_ref,
             size_t                 level_ref,
             double                 z_est,
+            int                    patch_half_sz,
             const Sophus::SE3d&    t_cr
         );
 
@@ -96,6 +114,38 @@ namespace vslam {
             uint8_t*               patch
         );
     }
+
+    template <
+        int _PatchHalfSize = 4
+    >
+    struct alignment {
+
+        static constexpr int patch_half_sz = _PatchHalfSize;
+        static constexpr int border_sz     = 1;
+        static constexpr int patch_sz      = patch_half_sz * 2;
+        static constexpr int patch_area    = patch_sz * patch_sz;
+        static constexpr int patch_with_border_sz   = (patch_half_sz + border_sz) * 2;
+        static constexpr int patch_with_border_area = patch_with_border_sz * patch_with_border_sz;
+        
+        static bool align1d(
+            const cv::Mat&         img_cur, 
+            const Eigen::Vector2d& orien, 
+            uint8_t*               patch_with_border_ref, 
+            size_t                 n_iterations,
+            Eigen::Vector2d&       uv_cur
+        );
+
+        /**
+         * @brief using ICIA to align the feature
+         * @cite Lucas-Kanade 20 Years On: A Unifying Framework
+         */ 
+        static bool align2d(
+            const cv::Mat&   img_cur, 
+            uint8_t*         patch_with_border_ref, 
+            size_t           n_iterations,
+            Eigen::Vector2d& uv_cur
+        );
+    };
 
 } // namespace vslam
 

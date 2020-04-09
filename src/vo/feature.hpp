@@ -105,16 +105,7 @@ namespace vslam {
     };
 
     fast_detector::fast_detector(int _h, int _w, int _cell_sz, size_t _n_levels) : 
-        abstract_detector(_h, _w, _cell_sz, _n_levels) { }
-
-
-    namespace alignment {
-
-        bool align_1d();
-        bool align_2d();
-        
-    } // namespace alignment
-    
+        abstract_detector(_h, _w, _cell_sz, _n_levels) { }    
 }
 
 #endif

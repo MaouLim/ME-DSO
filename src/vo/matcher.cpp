@@ -9,7 +9,8 @@
 
 namespace vslam {
 
-    void patch_matcher::_create_patch_without_border() {
+    template <int _PatchHalfSize>
+    void patch_matcher<_PatchHalfSize>::_create_patch_without_border() {
         uint8_t* p = _patch;
         uint8_t* q = _patch_with_border + patch_with_border_sz + border_sz;
         for (int r = 0; r < patch_sz; ++r) {
@@ -21,7 +22,8 @@ namespace vslam {
         }
     }
 
-    bool patch_matcher::match_covisibility(
+    template <int _PatchHalfSize>
+    bool patch_matcher<_PatchHalfSize>::match_covisibility(
         const map_point_ptr& mp, 
         const frame_ptr&     cur, 
         Eigen::Vector2d&     uv_cur
@@ -41,7 +43,7 @@ namespace vslam {
         Eigen::Vector3d xyz_ref = ref->t_cw * mp->position;
         Eigen::Matrix2d affine_cr = affine::affine_mat(
             ref->camera, feat_ref->uv, feat_ref->level, 
-            xyz_ref.z(), cur->t_cw * ref->t_wc
+            xyz_ref.z(), patch_half_sz + border_sz, cur->t_cw * ref->t_wc
         );
 
         size_t max_level = config::get<int>("pyr_levels") - 1;
@@ -71,14 +73,14 @@ namespace vslam {
         return success;
     }
 
-    bool patch_matcher::match_epipolar_search(
+    template <int _PatchHalfSize>
+    bool patch_matcher<_PatchHalfSize>::match_epipolar_search(
         const frame_ptr&   ref,
         const frame_ptr&   cur,
         const feature_ptr& feat_ref,
-        double             depth_est,
         double             depth_min,
         double             depth_max,
-        double&            depth_ref
+        double&            depth_est
     ) {
         Sophus::SE3d t_cr = cur->t_cw * ref->t_wc;
         //double best_zmssd = 1e10 /* threshold */;
@@ -100,7 +102,7 @@ namespace vslam {
 
         Eigen::Matrix2d affine_cr = affine::affine_mat(
             ref->camera, feat_ref->uv, feat_ref->level, 
-            xyz_unit_ref[2] * depth_est, t_cr
+            xyz_unit_ref[2] * depth_est, patch_half_sz + border_sz, t_cr
         );
 
         if (feature::EDGELET == feat_ref->type && edgelet_filtering) {
@@ -125,12 +127,19 @@ namespace vslam {
         if (epipolar_len < min_len_to_epipolar_search) {
             Eigen::Vector2d uv_cur = (uv_min_cur + uv_max_cur) * 0.5;
             Eigen::Vector2d uv_leveln_cur = uv_cur / scale;
-            if (!alignment::align1d()) { return false; }
+            bool success = false;
+            if (using_alignment_1d) {
+                success = alignment::align1d();
+            }
+            else {
+                success = alignment::align2d();
+            }
+            if (!success) { return false; }
             uv_cur = uv_leveln_cur * scale;
             double depth_cur = 0.;
             return utils::depth_from_triangulate_v2(
                 cur->camera->pixel2cam_unit(uv_cur), 
-                xyz_unit_ref, t_cr, depth_cur, depth_ref
+                xyz_unit_ref, t_cr, depth_cur, depth_est
             );
         }
 
@@ -176,23 +185,32 @@ namespace vslam {
         // subpixel refinement
         Eigen::Vector2d best_uv = cur->camera->cam2pixel(utils::homogenize(best_xy));
         Eigen::Vector2d best_uv_leveln = best_uv / scale;
-        if (!alignment::align_2d()) { return false; }
+        bool success = false;
+        if (using_alignment_1d) {
+            success = alignment::align1d();
+        }
+        else {
+            success = alignment::align2d();
+        }
+        if (!success) { return false; }
         Eigen::Vector2d uv_refined = best_uv_leveln * scale;
         double depth_cur = 0.;
         return utils::depth_from_triangulate_v2(
             cur->camera->pixel2cam_unit(uv_refined), 
-            xyz_unit_ref, t_cr, depth_cur, depth_ref
+            xyz_unit_ref, t_cr, depth_cur, depth_est
         );
     }
     
+
     inline Eigen::Matrix2d affine::affine_mat(
         const camera_ptr&      camera, 
         const Eigen::Vector2d& uv_ref,
         size_t                 level_ref,
         double                 z_est,
+        int                    patch_half_sz,
         const Sophus::SE3d&    t_cr
     ) {
-        const int patch_half_sz = patch_matcher::patch_half_sz + 1;
+        //const int half_sz = patch_half_sz + border_sz;
         const int scale = (1 << level_ref); 
         Eigen::Vector2d uv_plus_du = uv_ref + Eigen::Vector2d(patch_half_sz * scale, 0.);
         Eigen::Vector2d uv_plus_dv = uv_ref + Eigen::Vector2d(0., patch_half_sz * scale);
@@ -250,6 +268,118 @@ namespace vslam {
                 }
             }
         }
+    }
+
+    template <int _PatchHalfSize>
+    bool alignment<_PatchHalfSize>::align1d(
+        const cv::Mat&         img_cur, 
+        const Eigen::Vector2d& orien, 
+        uint8_t*               patch_with_border_ref, 
+        size_t                 n_iterations,
+        Eigen::Vector2d&       uv_cur
+    ) {
+        bool converged = false;
+    }
+
+    template <int _PatchHalfSize>
+    bool alignment<_PatchHalfSize>::align2d(
+        const cv::Mat&   img_cur, 
+        uint8_t*         patch_with_border_ref, 
+        size_t           n_iterations,
+        Eigen::Vector2d& uv_cur
+    ) {
+        bool converged = false;
+
+        double __attribute__((__aligned__(16))) patch_dx_ref[patch_area];
+        double __attribute__((__aligned__(16))) patch_dy_ref[patch_area];
+
+        Eigen::Matrix3d hessian = Eigen::Matrix3d::Zero();
+
+        double* dx_ptr = patch_dx_ref;
+        double* dy_ptr = patch_dy_ref;
+
+        const int ref_stride = patch_with_border_sz;
+        uint8_t* ref_ptr = 
+            patch_with_border_ref + ref_stride + border_sz;
+
+        for (int r = 0; r < patch_sz; ++r) {
+            for (int c = 0; c < patch_sz; ++c) {
+                Eigen::Vector2d jacc;
+                jacc << (     double(ref_ptr[1]) -              double(ref_ptr[-1])) / 2., 
+                        (double(ref_ptr[ref_stride]) - double(ref_ptr[-ref_stride])) / 2.,
+                        1.;
+                *dx_ptr = jacc[0];
+                *dy_ptr = jacc[1];
+                hessian += jacc * jacc.transpose();
+            }
+            dx_ptr += patch_sz;
+            dx_ptr += patch_sz;
+            ref_ptr += ref_stride;
+        }
+
+        double intensity_mean_diff = 0.;
+        double u = uv_cur.x(), v = uv_cur.y();
+
+        int x = std::floor(u), y = std::floor(v);
+        double dx = u - x, dy = v - y;
+
+        double w00 = (1. - dx) * (1. - dy);
+        double w01 = dx * (1. - dy);
+        double w10 = (1. - dx) * dy;
+        double w11 = dx * dy;
+
+        const int cur_stride = img_cur.step.p[0];
+        uint8_t* cur_ptr = 
+            img_cur.data + (y - patch_half_sz) * cur_stride + (x - patch_half_sz);
+        ref_ptr = 
+            patch_with_border_ref + ref_stride + border_sz;
+        dx_ptr = patch_dx_ref;
+        dy_ptr = patch_dy_ref;
+
+        double last_chi2 = std::numeric_limits<double>::max(); 
+
+        for (size_t i = 0; i < n_iterations; ++i) {
+
+            if (!utils::in_image(img_cur, u, v, patch_half_sz)) { break; }
+
+            double chi2 = 0.0;
+            Eigen::Vector3d jacc = Eigen::Vector3d::Zero();
+            
+            for (int r = 0; r < patch_sz; ++r) {
+                for (int c = 0; c < patch_sz; ++c) {
+                    double intensity_cur = 
+                        w00 * cur_ptr[0 + c] + 
+                        w01 * cur_ptr[1 + c] + 
+                        w10 * cur_ptr[cur_stride + c] + 
+                        w11 * cur_ptr[cur_stride + 1 + c];
+                    double err = ref_ptr[c] - intensity_cur + intensity_mean_diff;
+                    chi2 += 0.5 * err * err;
+                    jacc[0] += -err * dx_ptr[c];
+                    jacc[1] += -err * dy_ptr[c];
+                    jacc[2] += -err * 1.;
+                }
+                cur_ptr += cur_stride;
+                ref_ptr += ref_stride;
+                dx_ptr += patch_sz;
+                dy_ptr += patch_sz;
+            }
+
+            Eigen::Vector3d delta = hessian.ldlt().solve(jacc);
+            if (delta.hasNaN()) { assert(false); return false; }
+            if (last_chi2 < chi2) { break; }
+
+            if (delta.norm() < align_converge_thresh) {
+                std::cout << "converged" << std::endl;
+                break;
+            }
+
+            u += delta[0];
+            v += delta[1];
+            intensity_mean_diff += delta[2];
+            last_chi2 = chi2;
+        }
+
+        uv_cur << u, v;
     }
 
 } // namespace vslam
