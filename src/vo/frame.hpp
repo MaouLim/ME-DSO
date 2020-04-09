@@ -32,10 +32,14 @@ namespace vslam {
         const Eigen::Vector3d& cam_center() const { return t_wc.translation(); }
         void set_pose(const Sophus::SE3d& _t_cw) { t_cw = _t_cw; t_wc = t_cw.inverse(); }
 
+        /**
+         * @param p_p    2d pixel point at level0 (or called uv)
+         * @param border border size of the viewport
+         */
         bool visible(const Eigen::Vector2d& p_p, double border = 0.0, size_t level = 0) const;
         bool visible(const Eigen::Vector3d& p_w, double border = 0.0) const;
-        void min_and_median_depth(double& min, double& median) const;
 
+        void min_and_median_depth(double& min, double& median) const;
         void add_feature(const feature_ptr& _feat) { features.push_front(_feat); ++n_features; }
         bool remove_good_feature(const feature_ptr& _feat);
 

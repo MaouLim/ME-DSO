@@ -18,7 +18,6 @@ namespace vslam {
         virtual double err_mul2() const = 0;
         virtual cv::Mat rectify(const cv::Mat& raw) { return raw; }
 
-
         /**
          * @brief compute direction of from camera center to pixel point
          * @param p_p  2d pixel point
@@ -42,8 +41,9 @@ namespace vslam {
             const Eigen::Vector2d& p_p, const Sophus::SE3d& t_wc, double z = 1.0) const;
 
         /**
-         * @param p_p    2d pixel point (or called uv)
+         * @param p_p    2d pixel point at level0 (or called uv)
          * @param border border size of the viewport
+         * @param level  the pyramid level of the pixel point
          */ 
         bool visible(const Eigen::Vector2d& p_p, double border = 0.0, size_t level = 0) const;
     };

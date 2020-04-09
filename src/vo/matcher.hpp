@@ -21,13 +21,21 @@ namespace vslam {
         patch_matcher() = default;
         ~patch_matcher() = default;
 
-        bool find_match_and_align(
+        /**
+         * @brief find the matched feature (on ref frame) using co-visibility 
+         *        and refine the feature on the current frame
+         * @param mp     map point viewed by cur frame
+         * @param cur    current frame
+         * @param uv_cur the pixel coordinate (level 0) of the map point on the 
+         *               current frame, and it will be refined 
+         */ 
+        bool match_covisibility(
             const map_point_ptr& mp, 
             const frame_ptr&     cur, 
             Eigen::Vector2d&     uv_cur
         );
 
-        bool find_match_epipolar_and_align(
+        bool match_epipolar_search(
             const frame_ptr&   ref,
             const frame_ptr&   cur,
             const feature_ptr& feat_ref,
@@ -38,16 +46,10 @@ namespace vslam {
         );
     
     private:
-        uint8_t         _patch[patch_area]                         __attribute__ ((aligned (16)));
-        uint8_t         _patch_with_border[patch_with_border_area] __attribute__ ((aligned (16)));
-        Eigen::Matrix2d _affine_cr;
-        Eigen::Vector2d _epipolar_orien;
-        double          _epipolar_len;
+        uint8_t _patch[patch_area]                         __attribute__ ((aligned (16)));
+        uint8_t _patch_with_border[patch_with_border_area] __attribute__ ((aligned (16)));
 
-        void _create_patch_from_patch_with_border();
-
-
-
+        void _create_patch_without_border();
     };
 
     namespace affine {

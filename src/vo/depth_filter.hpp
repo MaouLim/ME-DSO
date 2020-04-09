@@ -42,18 +42,6 @@ namespace vslam {
         utils::message_catagory catagory() const { return utils::DATA; }
     };
 
-    // struct _df_result_msg : utils::message_base {
-
-    //     map_point_ptr converged;
-    //     double        sigma2;
-
-    //     _df_result_msg(const map_point_ptr& _converged_seed, double sig2) : 
-    //         converged(_converged_seed), sigma2(sig2) { }
-    //     virtual ~_df_result_msg() = default;
-
-    //     utils::message_catagory catagory() const { return utils::DATA; }
-    // };
-
     /**
      * @brief implement the depth filter used by SVO, 
      *        ref 'Video-based, Real-Time Multi View Stereo'

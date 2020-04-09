@@ -5,10 +5,11 @@
 #include <vo/frame.hpp>
 #include <utils/config.hpp>
 #include <utils/utils.hpp>
+#include <utils/diff.hpp>
 
 namespace vslam {
 
-    void patch_matcher::_create_patch_from_patch_with_border() {
+    void patch_matcher::_create_patch_without_border() {
         uint8_t* p = _patch;
         uint8_t* q = _patch_with_border + patch_with_border_sz + border_sz;
         for (int r = 0; r < patch_sz; ++r) {
@@ -20,7 +21,7 @@ namespace vslam {
         }
     }
 
-    bool patch_matcher::find_match_and_align(
+    bool patch_matcher::match_covisibility(
         const map_point_ptr& mp, 
         const frame_ptr&     cur, 
         Eigen::Vector2d&     uv_cur
@@ -32,7 +33,7 @@ namespace vslam {
         assert(ref);
         if (!ref->visible(
                 feat_ref->uv, 
-                patch_half_sz + border_sz + 1, 
+                patch_half_sz + border_sz, 
                 feat_ref->level
             )
         ) { return false; }
@@ -51,7 +52,7 @@ namespace vslam {
             patch_half_sz + border_sz, _patch_with_border
         );
 
-        _create_patch_from_patch_with_border();
+        _create_patch_without_border();
 
         bool success = false;
         double scale = (1 << search_level);
@@ -70,7 +71,7 @@ namespace vslam {
         return success;
     }
 
-    bool patch_matcher::find_match_epipolar_and_align(
+    bool patch_matcher::match_epipolar_search(
         const frame_ptr&   ref,
         const frame_ptr&   cur,
         const feature_ptr& feat_ref,
@@ -82,16 +83,20 @@ namespace vslam {
         Sophus::SE3d t_cr = cur->t_cw * ref->t_wc;
         //double best_zmssd = 1e10 /* threshold */;
 
+        // unit vector point to the 3d point
         Eigen::Vector3d xyz_unit_ref = feat_ref->xy1.normalized();
 
         Eigen::Vector3d xyz_min_cur = t_cr * (depth_min * xyz_unit_ref);
         Eigen::Vector3d xyz_max_cur = t_cr * (depth_max * xyz_unit_ref);
+
+        Eigen::Vector2d xy_min_cur = utils::project(xyz_min_cur);
+        Eigen::Vector2d xy_max_cur = utils::project(xyz_max_cur);
         Eigen::Vector2d uv_min_cur = cur->camera->cam2pixel(xyz_min_cur);
         Eigen::Vector2d uv_max_cur = cur->camera->cam2pixel(xyz_max_cur);
 
-        Eigen::Vector2d epipolar_vec = uv_min_cur - uv_max_cur;
-        double epipolar_len = epipolar_vec.norm();
-        Eigen::Vector2d epipolar_orien = epipolar_vec / epipolar_len;
+        Eigen::Vector2d epipolar_unit_plane = xy_max_cur - xy_min_cur;
+        double epipolar_len = (uv_max_cur - uv_min_cur).norm();
+        Eigen::Vector2d epipolar_orien = epipolar_unit_plane.normalized();
 
         Eigen::Matrix2d affine_cr = affine::affine_mat(
             ref->camera, feat_ref->uv, feat_ref->level, 
@@ -113,11 +118,12 @@ namespace vslam {
             patch_half_sz + border_sz, _patch_with_border
         );
 
-        _create_patch_from_patch_with_border();
+        _create_patch_without_border();
+
+        double scale = (1 << level_cur);
 
         if (epipolar_len < min_len_to_epipolar_search) {
             Eigen::Vector2d uv_cur = (uv_min_cur + uv_max_cur) * 0.5;
-            double scale = (1 << level_cur);
             Eigen::Vector2d uv_leveln_cur = uv_cur / scale;
             if (!alignment::align1d()) { return false; }
             uv_cur = uv_leveln_cur * scale;
@@ -129,9 +135,54 @@ namespace vslam {
         }
 
         size_t n_steps = epipolar_len / epipolar_search_step;
+        Eigen::Vector2d step = epipolar_unit_plane / n_steps;
         if (max_epipolar_search_steps < n_steps) { return false; }
 
-        //TODO
+        // epipolar search
+        double best_ssd = std::numeric_limits<double>::max();
+        Eigen::Vector2d best_xy;
+        Eigen::Vector2d xy = xy_min_cur + step;
+        Eigen::Vector2i last_uv(0, 0);
+        const cv::Mat& img_leveln = cur->pyramid[level_cur];
+        
+        for (size_t i = 0; i < n_steps; ++i) {
+
+            Eigen::Vector2d uv = cur->camera->cam2pixel(utils::homogenize(xy));
+            Eigen::Vector2i uv_leveln = (uv / scale).cast<int>();
+
+            if (last_uv == uv_leveln) { continue; }
+            last_uv = uv_leveln;
+            
+            if (!utils::in_image(
+                    img_leveln, 
+                    uv_leveln.x(), uv_leveln.y(), 
+                    patch_half_sz
+                )
+            ) { continue; }
+
+            uint8_t* patch_cur = 
+                img_leveln.data + (uv_leveln.y() - patch_half_sz) * img_leveln.cols + uv_leveln.x();
+            double ssd = utils::diff_2d<uint8_t>::zm_ssd(_patch, 0, patch_cur, img_leveln.cols);
+            if (ssd < best_ssd) {
+                best_ssd = ssd;
+                best_xy = xy;
+            }
+            xy += step;
+        }
+
+        // the difference is too large
+        if (epipolar_search_thresh < best_ssd) { return false; }
+
+        // subpixel refinement
+        Eigen::Vector2d best_uv = cur->camera->cam2pixel(utils::homogenize(best_xy));
+        Eigen::Vector2d best_uv_leveln = best_uv / scale;
+        if (!alignment::align_2d()) { return false; }
+        Eigen::Vector2d uv_refined = best_uv_leveln * scale;
+        double depth_cur = 0.;
+        return utils::depth_from_triangulate_v2(
+            cur->camera->pixel2cam_unit(uv_refined), 
+            xyz_unit_ref, t_cr, depth_cur, depth_ref
+        );
     }
     
     inline Eigen::Matrix2d affine::affine_mat(
@@ -193,7 +244,7 @@ namespace vslam {
                 uv_cur *= double(1 << search_level);
                 // uv: uv at leveln
                 Eigen::Vector2d uv = affine_rc * uv_cur + center_ref;
-                if (utils::in_image(image_leveln_ref, uv[0], uv[1], 1.)) { *ptr = 0; }
+                if (!utils::in_image(image_leveln_ref, uv[0], uv[1])) { *ptr = 0; }
                 else {
                     *ptr = utils::bilinear_interoplate<uint8_t>(image_leveln_ref, uv[0], uv[1]);
                 }

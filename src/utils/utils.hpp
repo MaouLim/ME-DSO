@@ -156,6 +156,30 @@ namespace utils {
      * some utils related to Eigen3 math
      */ 
 
+    inline Eigen::Vector2d project(
+        const Eigen::Vector3d& homogeneous
+    ) {
+        return homogeneous.head<2> / homogeneous[2];
+    }
+
+    inline Eigen::Vector3d project(
+        const Eigen::Vector4d& homogeneous
+    ) {
+        return homogeneous.head<3>() / homogeneous[3];
+    }
+
+    inline Eigen::Vector3d homogenize(
+        const Eigen::Vector2d& xy
+    ) {
+        return { xy.x(), xy.y(), 1. };
+    }
+
+    inline Eigen::Vector4d homogenize(
+        const Eigen::Vector3d& xyz
+    ) {
+        return { xyz.x(), xyz.y(), xyz.z(), 1. };
+    }
+
     inline Eigen::Matrix3d hat(const Eigen::Vector3d& v) {
         Eigen::Matrix3d v_hat;
         v_hat <<  0, -v[2],  v[1],

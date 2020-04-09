@@ -48,7 +48,7 @@ namespace vslam {
 
         for (size_t i = 0; i < n_matches; ++i) {
             Eigen::Vector3d xyz = h_cr * xy1s_ref[i];
-            Eigen::Vector2d xy = xyz.head<2>() / xyz.z();
+            Eigen::Vector2d xy = utils::project(xyz);//xyz.head<2>() / xyz.z();
             Eigen::Vector2d err_vec = xy1s_cur[i].head<2>() - xy;
             double err = err_mul2 * err_vec.norm();
             inliers[i] = (err < threshold);
