@@ -340,6 +340,34 @@ namespace utils {
     }
 
     /**
+     * @brief calculate the weights of bilinear interoplate
+     *          dx
+     *  (v00)-************-(v01)
+     *     dy *   |      *
+     *        *---*-(u,v)*
+     *        *          *
+     *        *          *
+     *  (v10)-**********-(v11)
+     */ 
+    inline Eigen::Matrix2d bilinear_weights(double u, double v) {
+        int x = std::floor(u);
+        int y = std::floor(v);
+        double dx = u - x;
+        double dy = v - y;
+
+        Eigen::Matrix2d weights;
+        weights << (1. - dx) * (1. - dy), 
+                          dx * (1. - dy),
+                   (1. - dx) * dy,
+                          dx * dy;
+        return weights;
+    }
+
+    inline Eigen::Matrix2d bilinear_weights(const Eigen::Vector2d& uv) {
+        return bilinear_weights(uv.x(), uv.y());
+    }
+
+    /**
      * other utils
      */ 
 

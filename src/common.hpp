@@ -33,6 +33,23 @@
  */ 
 #include <fast/fast.h>
 
+/**
+ * @cpp_headers g2o
+ */ 
+// #include <g2o/core/base_vertex.h>
+// #include <g2o/core/base_edge.h>
+// #include <g2o/core/base_unary_edge.h>
+// #include <g2o/core/base_binary_edge.h>
+// #include <g2o/core/sparse_optimizer.h>
+// #include <g2o/core/block_solver.h>
+// #include <g2o/core/optimization_algorithm_levenberg.h>
+// #include <g2o/core/optimization_algorithm_gauss_newton.h>
+
+/**
+ * @cpp_headers self
+ */ 
+#include <utils/patch.hpp>
+
 namespace vslam {
 
     using Matrix23d = Eigen::Matrix<double, 2, 3>;
@@ -54,6 +71,7 @@ namespace vslam {
     struct abstract_camera;
     struct initializer;
     struct corner;
+    struct patch_matcher;
 
     /* smart pointers for strong types */
     using feature_ptr     = vptr<feature>;
@@ -62,6 +80,7 @@ namespace vslam {
     using map_point_ptr   = vptr<map_point>;
     using camera_ptr      = vptr<abstract_camera>;
     using initializer_ptr = vptr<initializer>;   
+    using matcher_ptr     = vptr<patch_matcher>;
 
     /* weak pointers */
     using frame_wptr      = wptr<frame>;
@@ -73,6 +92,9 @@ namespace vslam {
     using corner_set  = std::vector<corner>;
     using feature_set = std::list<feature_ptr>;
     using pyramid_t   = std::vector<cv::Mat>;
+
+    using patch2d_uint8_t   = utils::patch2d<uint8_t, 4, 1>;
+    using patch2d_float64_t = utils::patch2d<double, 4, 1>;
 }
 
 #define CONST_EPS    1e-8

@@ -3,6 +3,7 @@
 #include <vo/feature.hpp>
 #include <vo/camera.hpp>
 #include <vo/map_point.hpp>
+#include <vo/matcher.hpp>
 #include <utils/utils.hpp>
 #include <utils/config.hpp>
 
@@ -105,9 +106,8 @@ namespace vslam {
         auto ref = itr->host_feature->host_frame.lock();
         if (!ref) { assert(false); return; }
 
-        Eigen::Vector3d xy1_ref = itr->host_feature->xy1; 
-        xy1_ref.normalize();
-        Eigen::Vector3d xyz_ref = xy1_ref / itr->mu;
+        Eigen::Vector3d xyz_unit_ref = itr->host_feature->xy1.normalized(); 
+        Eigen::Vector3d xyz_ref = xyz_unit_ref / itr->mu;
         Eigen::Vector3d xyz_world = ref->t_wc * xyz_ref;
         if (!cur->visible(xyz_world)) {
             ++itr; return;
@@ -115,9 +115,13 @@ namespace vslam {
 
         double dinv_max = itr->mu + std::sqrt(itr->sigma2);
         double dinv_min = std::max(itr->mu - std::sqrt(itr->sigma2), CONST_EPS);
-        double d = 0.;
+        double depth_est = 1. / itr->mu;
         Eigen::Vector2d uv_matched;
-        if (!_matcher->epipolar_search(/* TODO */uv_matched)) {
+        if (!_matcher->match_epipolar_search(
+                ref, cur, itr->host_feature,
+                1. / dinv_max, 1. / dinv_min,  depth_est
+            )
+        ) {
             itr->b += 1.; ++itr;
             return;
         }
@@ -127,16 +131,16 @@ namespace vslam {
         // tau: depth uncertainty
         double tau = utils::calc_depth_cov(xyz_ref, trans_cr, focal_len);
         // tau_inv: inversed depth uncertainty
-        double tau_inv = 0.5 * (1.0 / std::max(d - tau, CONST_EPS) - 1.0 / (d + tau));
+        double tau_inv = 0.5 * (1.0 / std::max(depth_est - tau, CONST_EPS) - 1.0 / (depth_est + tau));
 
-        _update(1. / d, tau * tau, *itr);
+        _update(1. / depth_est, tau * tau, *itr);
         ++itr->count_updates;
 
         if (cur->key_frame) {
             _detector->set_grid_occupied(uv_matched);
         }
 
-        if (itr->converged(/**/)) {
+        if (itr->converged()) {
             assert(itr->host_feature->describe_nothing());
             auto new_mp = utils::mk_vptr<map_point>(xyz_world);
             new_mp->set_observed_by(itr->host_feature);

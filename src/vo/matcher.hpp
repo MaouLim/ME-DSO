@@ -5,21 +5,17 @@
 
 namespace vslam {
 
-    
-    template <
-        int _PatchHalfSize = 4
-    >
     struct patch_matcher {
-
-        static constexpr int patch_half_sz = _PatchHalfSize;
-        static constexpr int border_sz     = 1;
-        static constexpr int patch_sz      = patch_half_sz * 2;
-        static constexpr int patch_area    = patch_sz * patch_sz;
-        static constexpr int patch_with_border_sz   = (patch_half_sz + border_sz) * 2;
-        static constexpr int patch_with_border_area = patch_with_border_sz * patch_with_border_sz;
         
         static constexpr double min_len_to_epipolar_search = 2.0;
         static constexpr double epipolar_search_step       = CONST_COS_45;
+
+        static const int    max_alignment_iterations;
+        static const bool   using_alignment_1d;
+        static const double max_epipolar_search_ssd;
+        static const size_t max_epipolar_search_steps;
+        static const bool   edgelet_filtering;
+        static const double max_angle_between_epi_grad;
 
         patch_matcher() = default;
         ~patch_matcher() = default;
@@ -62,10 +58,11 @@ namespace vslam {
         );
     
     private:
-        uint8_t _patch[patch_area]                         __attribute__ ((aligned (16)));
-        uint8_t _patch_with_border[patch_with_border_area] __attribute__ ((aligned (16)));
+        //uint8_t _patch[patch_area]                         ;
+        //uint8_t _patch_with_border[patch_with_border_area]; //__attribute__ ((aligned (16)));
+        static constexpr int _check_sz = patch_t::half_sz + patch_t::border_sz;
 
-        void _create_patch_without_border();
+        patch_t _patch;
     };
 
     namespace affine {
@@ -100,9 +97,8 @@ namespace vslam {
          * @param image_leveln_ref image at level n
          * @param uv_level0_ref    pixel coordinate at level 0
          * @param level_ref        level n
-         * @param affine_rc        affine matrix from cur frame to ref frame
-         * @param patch_half_sz    
-         * @param patch            the head address of the patch data
+         * @param affine_rc        affine matrix from cur frame to ref frame 
+         * @param patch            patch data
          */ 
         bool extract_patch_affine(
             const cv::Mat&         image_leveln_ref,
@@ -110,27 +106,22 @@ namespace vslam {
             size_t                 level_ref,
             const Eigen::Matrix2d& affine_rc, 
             size_t                 search_level,
-            int                    patch_half_sz,
-            uint8_t*               patch
+            patch_t&               patch
         );
     }
 
-    template <
-        int _PatchHalfSize = 4
-    >
     struct alignment {
 
-        static constexpr int patch_half_sz = _PatchHalfSize;
-        static constexpr int border_sz     = 1;
-        static constexpr int patch_sz      = patch_half_sz * 2;
-        static constexpr int patch_area    = patch_sz * patch_sz;
-        static constexpr int patch_with_border_sz   = (patch_half_sz + border_sz) * 2;
-        static constexpr int patch_with_border_area = patch_with_border_sz * patch_with_border_sz;
+        static constexpr double align_converge_thresh = CONST_EPS;
         
+        /**
+         * @brief using ICIA to align the feature along the indicted direction 
+         * @cite Lucas-Kanade 20 Years On: A Unifying Framework
+         */
         static bool align1d(
             const cv::Mat&         img_cur, 
             const Eigen::Vector2d& orien, 
-            uint8_t*               patch_with_border_ref, 
+            const patch_t&         patch, 
             size_t                 n_iterations,
             Eigen::Vector2d&       uv_cur
         );
@@ -141,7 +132,7 @@ namespace vslam {
          */ 
         static bool align2d(
             const cv::Mat&   img_cur, 
-            uint8_t*         patch_with_border_ref, 
+            const patch_t&   patch, 
             size_t           n_iterations,
             Eigen::Vector2d& uv_cur
         );

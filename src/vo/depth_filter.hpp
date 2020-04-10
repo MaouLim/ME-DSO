@@ -1,14 +1,14 @@
 #ifndef _ME_VSLAM_DEPTH_FILTER_HPP_
 #define _ME_VSLAM_DEPTH_FILTER_HPP_
 
-
-
 #include <common.hpp>
 #include <utils/threading.hpp>
 
 namespace vslam {
 
     struct map_point_seed {
+
+        static constexpr double conveged_ratio = 0.005;
 
         int         id;
         int         generation_id;
@@ -26,7 +26,7 @@ namespace vslam {
         map_point_seed(int _gen_id, const feature_ptr& host, double d_mu, double d_min);
         ~map_point_seed();
 
-        bool converged(double ratio) const { return sigma2 < ratio * dinv_range; }
+        bool converged(double ratio = conveged_ratio) const { return std::sqrt(sigma2) < ratio * dinv_range; }
 
     private:
         static int _seed_seq;
@@ -86,6 +86,9 @@ namespace vslam {
 
         mutable std::mutex        _mutex_seeds;
         std::list<map_point_seed> _seeds;
+
+        // matcher
+        matcher_ptr               _matcher;
     };
 }
 
