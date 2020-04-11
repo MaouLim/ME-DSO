@@ -11,11 +11,11 @@ namespace vslam {
      */ 
     struct pose_estimator {
 
-        pose_estimator() = default;
-        ~pose_estimator() = default;
-        
-        void reset();
+        using patch_type = utils::patch2d<float, 2, 0>;
 
+        pose_estimator();
+        ~pose_estimator();
+        
         size_t estimate(
             const frame_ptr& ref, 
             const frame_ptr& cur, 
@@ -25,11 +25,14 @@ namespace vslam {
     private:
         void _calc_residuals();
 
-        void _solve();
+        void _precalc_cache(const frame_ptr& ref, size_t level);
+        void _clear_cache();
+        void _init_graph(const frame_ptr& cur, size_t level);
 
-        void _update();
-
-        void _precalc_cache(const cv::Mat& img_level);
+        size_t       _n_iterations;
+        size_t       _min_level;
+        size_t       _max_level;
+        Sophus::SE3d _t_cr;
 
         /**
          * @brief since the the jaccobians and the feature 
@@ -37,9 +40,15 @@ namespace vslam {
          *        several times
          * @field caches 
          */
-        std::vector<Sophus::Vector6d> _jaccbians_ref;
-        std::vector<patch_t>          _patches_ref;
-        std::vector<bool>             _visibles;
+        std::vector<Eigen::Matrix<double, patch_type::area, 6>> _jaccobians_ref;
+        std::vector<patch_type>                                 _patches_ref;
+        std::vector<bool>                                       _visibles_ref;
+
+        /**
+         * @field g2o staff
+         */ 
+        g2o::OptimizationAlgorithm* _algo;
+        g2o::SparseOptimizer        _optimizer;
     };
     
 } // namespace vslam

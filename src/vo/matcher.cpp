@@ -340,10 +340,13 @@ namespace vslam {
                         w01 * cur_ptr[1] + 
                         w10 * cur_ptr[cur_stride] + 
                         w11 * cur_ptr[cur_stride + 1];
-                    double err = *ref_ptr - intensity_cur + intensity_mean_diff;
+                    // res = I(W(x;p)) - T(x)
+                    double err = intensity_cur - *ref_ptr + intensity_mean_diff;
                     chi2 += 0.5 * err * err;
-                    b[0] += -err * (*dl_ptr);
-                    b[1] += -err * 1.;
+
+                    // jres = sum(dTdW*dWdp * res)
+                    b[0] += err * (*dl_ptr);
+                    b[1] += err * 1.;
 
                     ++dl_ptr;
                     ++ref_ptr; ++cur_ptr;
@@ -373,10 +376,11 @@ namespace vslam {
             last_u = u;
             last_v = v;
             last_chi2 = chi2;
-
-            u += delta[0] * search_dir[0];
-            v += delta[0] * search_dir[1];
-            intensity_mean_diff += delta[1];
+            
+            // p := p - delta_p
+            u -= delta[0] * search_dir[0];
+            v -= delta[0] * search_dir[1];
+            intensity_mean_diff -= delta[1];
         }
 
         uv_cur << u, v;
@@ -449,11 +453,11 @@ namespace vslam {
                         w01 * cur_ptr[1] + 
                         w10 * cur_ptr[cur_stride] + 
                         w11 * cur_ptr[cur_stride + 1];
-                    double err = *ref_ptr - intensity_cur + intensity_mean_diff;
+                    double err = intensity_cur - *ref_ptr + intensity_mean_diff;
                     chi2 += 0.5 * err * err;
-                    b[0] += -err * (*dx_ptr);
-                    b[1] += -err * (*dy_ptr);
-                    b[2] += -err * 1.;
+                    b[0] += err * (*dx_ptr);
+                    b[1] += err * (*dy_ptr);
+                    b[2] += err * 1.;
 
                     ++dx_ptr; ++dy_ptr;
                     ++ref_ptr; ++cur_ptr;
@@ -484,9 +488,9 @@ namespace vslam {
             last_v = v;
             last_chi2 = chi2;
 
-            u += delta[0];
-            v += delta[1];
-            intensity_mean_diff += delta[2];
+            u -= delta[0];
+            v -= delta[1];
+            intensity_mean_diff -= delta[2];
         }
 
         uv_cur << u, v;

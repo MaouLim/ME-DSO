@@ -16,6 +16,7 @@ namespace vslam {
         virtual Eigen::Vector3d pixel2cam(const Eigen::Vector2d&, double z = 1.0) const = 0;
         virtual double err_mul() const = 0;
         virtual double err_mul2() const = 0;
+        virtual Eigen::Vector2d focal_len() const = 0;
         virtual cv::Mat rectify(const cv::Mat& raw) { return raw; }
 
         /**
@@ -91,6 +92,7 @@ namespace vslam {
         Eigen::Vector3d pixel2cam(const Eigen::Vector2d& p_p, double z = 1.0) const override;
         double err_mul()  const override { return std::abs(fx * fy); }
         double err_mul2() const override { return std::abs(fx); }
+        Eigen::Vector2d focal_len() const override { return { fx, fy }; }
 
         Eigen::Matrix3d eigen_mat() const;
         cv::Mat cv_mat() const;
