@@ -22,16 +22,28 @@ namespace icia {
         void oplusImpl(const double* u) override {
             Sophus::Vector6d update;
             update << u[0], u[1], u[2], u[3], u[4], u[5];
-            _estimate = _estimate * Sophus::SE3d::exp(update).inverse();
+            _estimate = _estimate * Sophus::SE3d::exp(-update);
         }
     };
 
     struct _uedge_patch_photometric_err : 
-        g2o::BaseUnaryEdge<1, std::pair<uint8_t*, int>, _vertex_pose_only> {
+        g2o::BaseUnaryEdge<1, cv::Mat, _vertex_pose_only> {
 
         using patch_type = vslam::pose_estimator::patch_type;
 
-        _uedge_patch_photometric_err() : _jacc_set(false) { }
+        _uedge_patch_photometric_err(
+            const Eigen::Vector3d&          xyz_ref, 
+            const patch_type&               patch_ref, 
+            size_t                          level,
+            const vslam::camera_ptr&        camera,
+            const Eigen::Matrix<
+                double, patch_type::area, 6
+            >&                              jacc_caches
+        ) : _jacc_set(false), _xyz_ref(xyz_ref), _patch_ref(patch_ref),
+            _level(level), _camera(camera), _jacc_caches(jacc_caches) 
+        {
+            _jacc.setZero();
+        }
 
         bool read(std::istream& is) override { return false; }
         bool write(std::ostream& os) const override { return false; }
@@ -39,23 +51,26 @@ namespace icia {
         void computeError() override {
             auto v = (const _vertex_pose_only*) _vertices[0];
             auto t_cr = v->estimate();
+            const cv::Mat& img_leveln_cur = _measurement;
+
             Eigen::Vector3d xyz_cur   = t_cr * _xyz_ref;
             Eigen::Vector2d uv_cur    = _camera->cam2pixel(xyz_cur);
             Eigen::Vector2d uv_leveln = uv_cur / (1 << _level);
 
             if (!utils::in_image(
-                    _img_leveln_cur, uv_leveln.x(), uv_leveln.y(), _check_sz
+                    img_leveln_cur, uv_leveln.x(), uv_leveln.y(), _check_sz
                 )
             ) { _error.setZero(); this->setLevel(1); return; }
             
             auto w = utils::bilinear_weights(uv_leveln);
 
-            const float* ref_ptr    = _patch_ref.data;
             const int    ref_stride = patch_type::size;
-
-            const uint8_t* cur_ptr    = _measurement.first;
-            const int      cur_stride = _measurement.second;
-
+            const float* ref_ptr    = _patch_ref.data;
+            
+            const int      cur_stride = img_leveln_cur.step.p[0];
+            const uint8_t* cur_ptr    = img_leveln_cur.data + 
+                                        (int(uv_leveln.y()) - patch_type::half_sz) * cur_stride + 
+                                        (int(uv_leveln.x()) - patch_type::half_sz);
             _error.setZero();
 
             size_t count_pixels = 0;
@@ -69,7 +84,7 @@ namespace icia {
                     _error(0, 0) += intensity_cur - *ref_ptr;
                     ++ref_ptr; ++cur_ptr;
 
-                    _jacc.noalias() += _error(0, 0) * _jacc_caches.row(count_pixels++);
+                    _jacc.noalias() -= _jacc_caches.row(count_pixels++);
                 }
                 cur_ptr += (cur_stride - patch_type::size);
             }
@@ -86,7 +101,6 @@ namespace icia {
 
         const Eigen::Vector3d&   _xyz_ref;
         const patch_type&        _patch_ref;
-        const cv::Mat&           _img_leveln_cur;
         size_t                   _level;
         const vslam::camera_ptr& _camera;
 
@@ -123,7 +137,7 @@ namespace vslam {
             --idx;
             _clear_cache();
             _precalc_cache(ref, idx);
-            _init_graph(cur, idx);
+            _init_graph(ref, cur, idx);
             _optimizer.optimize(_n_iterations);
         }
     }
@@ -144,12 +158,12 @@ namespace vslam {
         size_t idx = 0;
 
         for (const auto& each_feat : ref->features) {
-            if (each_feat->describe_nothing()) { continue; }
+            if (each_feat->describe_nothing()) { ++idx; continue; }
             Eigen::Vector2d uv_leveln = each_feat->uv / scale;
             if (utils::in_image(
                     img_leveln, uv_leveln.x(), uv_leveln.y(), check_sz
                 )
-            ) { continue; }
+            ) { ++idx; continue; }
 
             _visibles_ref[idx] = true;
             
@@ -207,10 +221,14 @@ namespace vslam {
         _visibles_ref.clear();
     }
 
-    void pose_estimator::_init_graph(const frame_ptr& cur, size_t level) {
+    void pose_estimator::_init_graph(
+        const frame_ptr& ref, 
+        const frame_ptr& cur, 
+        size_t           level
+    ) {
         _optimizer.clear();
 
-        // create vertex
+        // create vertices
         icia::_vertex_pose_only* v = new icia::_vertex_pose_only();
         v->setId(0);
         v->setEstimate(_t_cr);
@@ -218,6 +236,35 @@ namespace vslam {
         // add the vertex to graph
         _optimizer.addVertex(v);
 
+        // create edges
+        size_t idx = 0;
+        size_t count_edges = 0;
+
+        for (const auto& each_feat : ref->features) {
+            if (!_visibles_ref[idx]) { ++idx; continue; }
+
+            Eigen::Vector3d xyz_ref = 
+                ref->t_cw * each_feat->map_point_describing->position;
+            
+            auto& patch = _patches_ref[idx];
+            auto& jacc  = _jaccobians_ref[idx];
+
+            icia::_uedge_patch_photometric_err* e = 
+                new icia::_uedge_patch_photometric_err(
+                    xyz_ref, patch, level, cur->camera, jacc
+                );
+            e->setId(count_edges);
+            e->setVertex(0, v);
+            e->setRobustKernel(new g2o::RobustKernelHuber());
+            e->setInformation(Eigen::Matrix<double, 1, 1>::Identity());
+            e->setMeasurement(cur->pyramid[level]);
+
+            // add the edge to graph
+            _optimizer.addEdge(e);
+            
+            ++count_edges;
+            ++idx;
+        }
     }
-    
+
 } // namespace vslam

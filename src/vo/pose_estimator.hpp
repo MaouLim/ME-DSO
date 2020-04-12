@@ -27,7 +27,7 @@ namespace vslam {
 
         void _precalc_cache(const frame_ptr& ref, size_t level);
         void _clear_cache();
-        void _init_graph(const frame_ptr& cur, size_t level);
+        void _init_graph(const frame_ptr& ref, const frame_ptr& cur, size_t level);
 
         size_t       _n_iterations;
         size_t       _min_level;
