@@ -40,7 +40,7 @@ namespace vslam {
             xyz_ref.z(), _check_sz, cur->t_cw * ref->t_wc
         );
 
-        size_t max_level = utils::config::get<int>("pyr_levels") - 1;
+        size_t max_level = 4;//utils::config::get<int>("pyr_levels") - 1;
         size_t search_level = affine::search_best_level(affine_cr, max_level);
         affine::extract_patch_affine(
             ref->pyramid[feat_ref->level], feat_ref->uv, feat_ref->level, 
@@ -108,7 +108,7 @@ namespace vslam {
             double cos_angle = std::abs(grad_orien_cur.dot(epipolar_orien));
             if (cos_angle < std::cos(max_angle_between_epi_grad)) { return false; }
         }
-        size_t max_level = utils::config::get<int>("pyr_levels") - 1;
+        size_t max_level = 4;//utils::config::get<int>("pyr_levels") - 1;
         size_t level_cur = affine::search_best_level(affine_cr, max_level);
 
         affine::extract_patch_affine(

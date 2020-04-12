@@ -13,7 +13,11 @@ namespace vslam {
 
         using patch_type = utils::patch2d<float, 2, 0>;
 
-        pose_estimator();
+        pose_estimator(
+            size_t       n_iterations,
+            size_t       min_level,
+            size_t       max_level
+        );
         ~pose_estimator();
         
         size_t estimate(

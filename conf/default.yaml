@@ -6,6 +6,21 @@ cell_sz:              10
 pyr_levels:           5
 min_features_to_init: 200
 lk_win_sz:            30
+lk_max_iterations:    10
+lk_eps:               0.000001
+min_ref_features:     200
+min_features_to_tracked: 100
+min_init_shift:        0.05
+min_inliers:           80
+map_scale: 1.0
+viewport_border: 1.0
+max_reprojection_err: 0.2
+
+#depth_filer
+max_queue_sz: 4
+min_corner_score: 0.0
+max_seed_lifetime: 20
+
 
 # camera parameters
 width : 720

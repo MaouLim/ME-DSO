@@ -68,6 +68,7 @@ namespace vslam {
 
             for (auto& each : nonmax_corners) {
                 fast::fast_xy& xy = fast_corners[each];
+                if (!utils::in_image(pyramid[i], xy.x, xy.y, 4)) { continue; }
                 int index = cell_index({ xy.x, xy.y }, i);
                 if (grid_occupied[index]) { continue; }
 
@@ -79,7 +80,7 @@ namespace vslam {
         }
 
         for (auto& each : corners) {
-            if (each.score < threshold) { continue; }
+            if (each.score <= threshold) { continue; }
             features.emplace_front(new feature(host, { each.x, each.y }, each.level));
         }
         

@@ -5,11 +5,11 @@
 namespace utils {
 
     config::config_ptr config::_global_conf       (nullptr);
-    const std::string  config::default_config_file("conf/default.yaml");
+    const std::string  config::default_config_file("../conf/default.yaml");
 
     config::config(const std::string& path) {
 		try {
-			_storage.open(path, cv::FileStorage::READ | cv::FileStorage::FORMAT_YAML);
+			_storage.open(path, cv::FileStorage::READ |     cv::FileStorage::FORMAT_YAML);
 		}
 		catch (const std::exception& ex) {
 			if (!_storage.isOpened()) {

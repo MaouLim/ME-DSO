@@ -53,5 +53,8 @@ target_link_libraries(vslam vslam_utils g2o_core g2o_stuff ${OpenCV_LIBS} ${fast
 #add_executable(MatcherTest test/test_matcher.cpp)
 #target_link_libraries(MatcherTest ${OpenCV_LIBS} ${fast_LIBRARIES})
 
+add_executable(FeatureTest test/test_feature.cpp)
+target_link_libraries(FeatureTest g2o_core g2o_stuff ${OpenCV_LIBS} vslam)
+
 add_executable(PoseEstimatorTest test/test_pose_estimator.cpp)
 target_link_libraries(PoseEstimatorTest g2o_core g2o_stuff ${OpenCV_LIBS} vslam)

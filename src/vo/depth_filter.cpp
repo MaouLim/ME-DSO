@@ -25,14 +25,14 @@ namespace vslam {
 #endif
     }
 
-    const size_t depth_filter::max_queue_sz = 
-        utils::config::get<int>("max_queue_sz");
+    const size_t depth_filter::max_queue_sz = 5;
+        //utils::config::get<int>("max_queue_sz");
 
-    const double depth_filter::min_corner_score = 
-        utils::config::get<double>("min_corner_score");
+    const double depth_filter::min_corner_score = 0.1;
+        //utils::config::get<double>("min_corner_score");
 
-    const size_t depth_filter::max_seed_lifetime = 
-        utils::config::get<int>("max_seed_lifetime");
+    const size_t depth_filter::max_seed_lifetime = 20;
+        //utils::config::get<int>("max_seed_lifetime");
 
     depth_filter::depth_filter(
         const detector_ptr& _det, const converged_callback& _cb

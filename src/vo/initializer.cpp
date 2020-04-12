@@ -11,20 +11,20 @@
 
 namespace vslam {
 
-    const int initializer::min_ref_features = 
-        utils::config::get<int>("min_ref_features");
-    const int initializer::min_features_to_tracked = 
-        utils::config::get<int>("min_features_to_tracked");   
-    const double initializer::min_init_shift = 
-        utils::config::get<double>("min_init_shift");
-    const int initializer::min_inliers = 
-        utils::config::get<int>("min_inliers");
-    const double initializer::map_scale = 
-        utils::config::get<double>("map_scale");
-    const double initializer::viewport_border = 
-        utils::config::get<double>("viewport_border");
-    const double initializer::max_reprojection_err = 
-        utils::config::get<double>("max_reprojection_err");
+    const int initializer::min_ref_features = 200;
+        //utils::config::get<int>("min_ref_features");
+    const int initializer::min_features_to_tracked = 100;
+        //utils::config::get<int>("min_features_to_tracked");   
+    const double initializer::min_init_shift = 0.5;
+        //utils::config::get<double>("min_init_shift");
+    const int initializer::min_inliers = 80;
+        //utils::config::get<int>("min_inliers");
+    const double initializer::map_scale = 1.0;
+        //utils::config::get<double>("map_scale");
+    const double initializer::viewport_border = 1.0; 
+        //utils::config::get<double>("viewport_border");
+    const double initializer::max_reprojection_err = 0.2; 
+        //utils::config::get<double>("max_reprojection_err");
 
     initializer::op_result 
     initializer::set_first(const frame_ptr& first) 
@@ -155,8 +155,8 @@ namespace vslam {
         const int w = target->camera->width;
 
         const size_t pyr_levels       = frame::pyr_levels;
-        const int    cell_sz          = utils::config::get<int>("cell_sz");
-        const double min_corner_score = utils::config::get<double>("min_corner_score");
+        const int    cell_sz          = 10;//utils::config::get<int>("cell_sz");
+        const double min_corner_score = 0.1;//utils::config::get<double>("min_corner_score");
 
         feature_set new_features;
         fast_detector detector(h, w, cell_sz, pyr_levels);
@@ -203,9 +203,9 @@ namespace vslam {
          */ 
 
         // parameters
-        const int    lk_win_sz         = utils::config::get<int>("lk_win_sz");
-        const size_t lk_max_iterations = utils::config::get<int>("lk_max_iterations");
-        const double lk_eps            = utils::config::get<double>("lk_eps");
+        const int    lk_win_sz         = 30;//utils::config::get<int>("lk_win_sz");
+        const size_t lk_max_iterations = 10;//utils::config::get<int>("lk_max_iterations");
+        const double lk_eps            = 1e-8;//utils::config::get<double>("lk_eps");
         const size_t max_pyramid       = frame::pyr_levels;
 
         std::vector<uchar> status;

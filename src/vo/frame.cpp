@@ -9,7 +9,7 @@
 namespace vslam {
 
     int    frame::_seq_id    = 0;
-    size_t frame::pyr_levels = utils::config::get<int>("pyr_levels");
+    size_t frame::pyr_levels = 5;//utils::config::get<int>("pyr_levels");
 
     frame::frame(
         const camera_ptr& _cam, 

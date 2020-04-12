@@ -1,9 +1,6 @@
-#include <iostream>
-
 #include <common.hpp>
 
 #include <vo/camera.hpp>
-#include <vo/pose_estimator.hpp>
 #include <vo/frame.hpp>
 #include <vo/feature.hpp>
 
@@ -13,7 +10,7 @@ int main(int argc, char** argv) {
     cv::Mat img_cur = cv::imread("data/02.png", cv::IMREAD_GRAYSCALE);
 
     assert(img_ref.data && img_cur.data);
-//fast_detector(int _h, int _w, int _cell_sz, size_t _n_levels);
+
     vslam::detector_ptr detector 
         = utils::mk_vptr<vslam::fast_detector>(480, 640, 10, 5);
     vslam::camera_ptr cam = 
@@ -22,16 +19,31 @@ int main(int argc, char** argv) {
     vslam::frame_ptr ref = utils::mk_vptr<vslam::frame>(cam, img_ref, 0);
     vslam::frame_ptr cur = utils::mk_vptr<vslam::frame>(cam, img_cur, 0);
 
-    detector->detect(ref, 10.0, ref->features);
-    detector->detect(cur, 10.0, cur->features);
+    vslam::feature_set a, b;
 
-    Sophus::SE3d t_cr;
+    detector->detect(ref, 100.0, a);
+    detector->detect(cur, 100.0, b);
 
-    vslam::pose_estimator est(10, 0, 4);
-    est.estimate(ref, cur, t_cr);
+    int level_counter[5] = { 0 };
 
-    std::cout << "R:\n" << t_cr.rotationMatrix() << std::endl;
-    std::cout << "t:\n" << t_cr.translation() << std::endl;
+    for (auto each_feat : a) {
+        if (each_feat->level == 0) {
+            auto uv = each_feat->uv;
+            cv::circle(img_ref, cv::Point2i(uv.x(), uv.y()), 3, 255, 2);
+        }
+
+        ++level_counter[each_feat->level];
+    }
+
+    for (int i = 0; i < 5; ++i) {
+        std::cout << "level " << i << ": " << level_counter[i] << std::endl;
+    }
+
+    std::cout << "a n_features :" << a.size() << std::endl;
+    std::cout << "b n_features :" << b.size() << std::endl;
+
+    cv::imshow("ref", img_ref);
+    cv::waitKey();
     
     return 0;
 }

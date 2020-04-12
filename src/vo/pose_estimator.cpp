@@ -113,7 +113,12 @@ namespace icia {
 
 namespace vslam {
 
-    pose_estimator::pose_estimator() { 
+    pose_estimator::pose_estimator(
+        size_t       n_iterations,
+        size_t       min_level,
+        size_t       max_level
+    ) : _n_iterations(n_iterations), _min_level(min_level), _max_level(max_level) 
+    { 
         using block_solver_t  = g2o::BlockSolver<g2o::BlockSolverTraits<6, 3>>;
         using linear_solver_t = g2o::LinearSolverDense<typename block_solver_t::PoseMatrixType>;
         _algo = new g2o::OptimizationAlgorithmGaussNewton(
@@ -139,6 +144,7 @@ namespace vslam {
             _clear_cache();
             _precalc_cache(ref, idx);
             _init_graph(ref, cur, idx);
+            _optimizer.initializeOptimization();
             total_iterations += _optimizer.optimize(_n_iterations);
         }
         return total_iterations;
