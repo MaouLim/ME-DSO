@@ -4,8 +4,9 @@
 #include <vo/camera.hpp>
 #include <vo/map_point.hpp>
 #include <vo/matcher.hpp>
-#include <utils/utils.hpp>
+
 #include <utils/config.hpp>
+#include <utils/utils.hpp>
 
 namespace vslam {
 
@@ -25,20 +26,20 @@ namespace vslam {
     }
 
     const size_t depth_filter::max_queue_sz = 
-        config::get<int>("max_queue_sz");
+        utils::config::get<int>("max_queue_sz");
 
     const double depth_filter::min_corner_score = 
-        config::get<double>("min_corner_score");
+        utils::config::get<double>("min_corner_score");
 
     const size_t depth_filter::max_seed_lifetime = 
-        config::get<int>("max_seed_lifetime");
+        utils::config::get<int>("max_seed_lifetime");
 
     depth_filter::depth_filter(
         const detector_ptr& _det, const converged_callback& _cb
     ) : base_type(max_queue_sz), 
         _detector(_det), _callback(_cb), _count_key_frames(0) 
     { 
-        add_handler(std::bind(&_handle_param, this, std::placeholders::_1));
+        add_handler(std::bind(&depth_filter::_handle_param, this, std::placeholders::_1));
     }
 
     bool depth_filter::commit(const param_type& param) {
@@ -54,6 +55,7 @@ namespace vslam {
                 [&]() { _queue.force_to_push(param); }
             );
         }
+        return true;
     }
 
     void depth_filter::_handle_param(param_type& param) {
@@ -87,9 +89,10 @@ namespace vslam {
 
         auto itr = _seeds.begin();
         while (itr != _seeds.end()) {
-            _new_key_frame.do_if(
-                false, &_handle_seed_itr, this, std::cref(frame), std::ref(itr)
+            auto callbable = std::bind(
+                &depth_filter::_handle_seed_itr, this, std::cref(frame), std::ref(itr)
             );
+            _new_key_frame.do_if(false, callbable);
         }
     }
 
@@ -165,11 +168,11 @@ namespace vslam {
         double sig2 = sqrt(tau2 + seed.sigma2);
         assert(!std::isnan(sig2));
 
-        std::normal_distribution<double> norm_dist(seed.mu, sig2);
+        //std::normal_distribution<double> norm_dist(seed.mu, sig2);
         double s2 = 1.0 / (1.0 / seed.sigma2 + 1.0 / tau2);
         double m = s2 * (seed.mu / seed.sigma2 + x / tau2);
 
-        double C1 = seed.a / (seed.a + seed.b) * norm_dist(x);
+        double C1 = seed.a / (seed.a + seed.b) * utils::normal_pdf(seed.mu, std::sqrt(sig2), x);
         double C2 = seed.b / (seed.a + seed.b) / seed.dinv_range;
         double norm_factor = C1 + C2;
 

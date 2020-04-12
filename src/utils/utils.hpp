@@ -1,7 +1,9 @@
 #ifndef _ME_VSLAM_UTILS_HPP_
 #define _ME_VSLAM_UTILS_HPP_
 
-#include <common.hpp>
+#include <opencv2/opencv.hpp>
+#include <Eigen/Core>
+#include <sophus_templ/se3.hpp>
 
 namespace utils {
 
@@ -73,7 +75,7 @@ namespace utils {
         _DType v00 = img.at<_DType>(y, x);
         _DType v10 = img.at<_DType>(y + 1, x);
         _DType v01 = img.at<_DType>(y, x + 1);
-        _DType v00 = img.at<_DType>(y + 1, x + 1);
+        _DType v11 = img.at<_DType>(y + 1, x + 1);
 
         return w00 * v00 + w01 * v01 + w10 * v10 + w11 * v11;
     }
@@ -159,7 +161,7 @@ namespace utils {
     inline Eigen::Vector2d project(
         const Eigen::Vector3d& homogeneous
     ) {
-        return homogeneous.head<2> / homogeneous[2];
+        return homogeneous.head<2>() / homogeneous[2];
     }
 
     inline Eigen::Vector3d project(
@@ -221,7 +223,7 @@ namespace utils {
     ) {
         const auto& rot   = t_cr.rotationMatrix();
         const auto& trans = t_cr.translation();
-        vslam::Matrix23d a_t;
+        Eigen::Matrix<double, 2, 3> a_t;
         a_t.block<1, 3>(0, 0) = -(rot * xy1_ref).transpose();
         a_t.block<1, 3>(1, 0) = xy1_cur.transpose();
         Eigen::Vector2d s = (a_t * a_t.transpose()).inverse() * a_t * trans;
@@ -380,14 +382,12 @@ namespace utils {
     }
 
     /**
-     * contruct(mk->make) a smart point to indicated type _Tp
+     * @brief gaussian probability density function
      */ 
-    template <typename _Tp, typename... _Args>
-    vslam::vptr<_Tp> mk_vptr(_Args&&... _args) {
-        typedef typename std::remove_cv<_Tp>::type _Tp_nc;
-        return std::allocate_shared<_Tp>(
-            std::allocator<_Tp_nc>(), std::forward<_Args>(_args)...
-        );
+    inline constexpr double normal_pdf(double mu, double sig, double x) {
+        constexpr double inv_sqrt_2pi = 0.3989422804014327;
+        double a = (x - mu) / sig;
+        return inv_sqrt_2pi / sig * std::exp(-0.5 * a * a);
     }
 }
 

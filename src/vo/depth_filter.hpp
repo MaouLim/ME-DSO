@@ -2,7 +2,6 @@
 #define _ME_VSLAM_DEPTH_FILTER_HPP_
 
 #include <common.hpp>
-#include <utils/threading.hpp>
 
 namespace vslam {
 
@@ -39,7 +38,7 @@ namespace vslam {
         _df_param_msg(const frame_ptr& _frame) : frame(_frame) { }
         virtual ~_df_param_msg() = default;
 
-        utils::message_catagory catagory() const { return utils::DATA; }
+        utils::message_catagory catagory() const override { return utils::DATA; }
     };
 
     /**
@@ -65,7 +64,7 @@ namespace vslam {
         // } options;
 
         depth_filter(const detector_ptr& _det, const converged_callback& _cb);
-        virtual ~depth_filter();
+        virtual ~depth_filter() = default;
 
         bool commit(const param_type& param) override;
 

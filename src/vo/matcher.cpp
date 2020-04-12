@@ -3,11 +3,19 @@
 #include <vo/feature.hpp>
 #include <vo/map_point.hpp>
 #include <vo/frame.hpp>
+
 #include <utils/config.hpp>
 #include <utils/utils.hpp>
 #include <utils/diff.hpp>
 
 namespace vslam {
+
+    const int    patch_matcher::max_alignment_iterations   = 10;
+    const bool   patch_matcher::using_alignment_1d         = false;
+    const double patch_matcher::max_epipolar_search_ssd    = 100.0;
+    const size_t patch_matcher::max_epipolar_search_steps  = 50;
+    const bool   patch_matcher::edgelet_filtering          = true;
+    const double patch_matcher::max_angle_between_epi_grad = M_PI / 4.;
 
     bool patch_matcher::match_covisibility(
         const map_point_ptr& mp, 
@@ -32,7 +40,7 @@ namespace vslam {
             xyz_ref.z(), _check_sz, cur->t_cw * ref->t_wc
         );
 
-        size_t max_level = config::get<int>("pyr_levels") - 1;
+        size_t max_level = utils::config::get<int>("pyr_levels") - 1;
         size_t search_level = affine::search_best_level(affine_cr, max_level);
         affine::extract_patch_affine(
             ref->pyramid[feat_ref->level], feat_ref->uv, feat_ref->level, 
@@ -100,7 +108,7 @@ namespace vslam {
             double cos_angle = std::abs(grad_orien_cur.dot(epipolar_orien));
             if (cos_angle < std::cos(max_angle_between_epi_grad)) { return false; }
         }
-        size_t max_level = config::get<int>("pyr_levels") - 1;
+        size_t max_level = utils::config::get<int>("pyr_levels") - 1;
         size_t level_cur = affine::search_best_level(affine_cr, max_level);
 
         affine::extract_patch_affine(
@@ -204,8 +212,7 @@ namespace vslam {
         );
     }
     
-
-    inline Eigen::Matrix2d affine::affine_mat(
+    Eigen::Matrix2d affine::affine_mat(
         const camera_ptr&      camera, 
         const Eigen::Vector2d& uv_ref,
         size_t                 level_ref,
@@ -233,7 +240,7 @@ namespace vslam {
         return res;
     }
 
-    inline size_t 
+    size_t 
     affine::search_best_level(
         const Eigen::Matrix2d& affine_mat, size_t max_level
     ) {
@@ -243,7 +250,7 @@ namespace vslam {
         return max_level < level ? max_level : level;
     }
 
-    inline bool extract_patch_affine(
+    bool affine::extract_patch_affine(
         const cv::Mat&         image_leveln_ref,
         const Eigen::Vector2d& uv_level0_ref,
         size_t                 level_ref,
@@ -269,6 +276,7 @@ namespace vslam {
                 }
             }
         }
+        return true;
     }
 
     bool alignment::align1d(
@@ -408,7 +416,7 @@ namespace vslam {
             for (int c = 0; c < patch_t::size; ++c) {
                 *dx_ptr = (         double(ref_ptr[1]) -          double(ref_ptr[-1])) / 2.;
                 *dy_ptr = (double(ref_ptr[ref_stride]) - double(ref_ptr[-ref_stride])) / 2.;
-                Eigen::Vector2d jacc;
+                Eigen::Vector3d jacc;
                 jacc << *dx_ptr, *dy_ptr, 1.;
                 hessian += jacc * jacc.transpose();
                 ++dx_ptr; ++dy_ptr; 

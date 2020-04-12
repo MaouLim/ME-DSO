@@ -1,7 +1,7 @@
 #ifndef _ME_VSLAM_MESSAGING_HPP_
 #define _ME_VSLAM_MESSAGING_HPP_
 
-#include <utils/blocked_queue.hpp>
+#include <utils/blocking_queue.hpp>
 
 namespace utils {
 
@@ -12,7 +12,7 @@ namespace utils {
 
 	struct message_base {
 		virtual ~message_base() = default;
-		virtual message_catagory catagory() const = 0;
+		virtual message_catagory catagory() const { return DATA; }
 	};
 
     struct stop_signal : message_base {

@@ -65,7 +65,7 @@ namespace vslam {
         int cell_index(const Eigen::Vector2d& uv, size_t level);
     };
 
-    abstract_detector::abstract_detector(
+    inline abstract_detector::abstract_detector(
         int _h, int _w, int _cell_sz, size_t _n_levels
     ) : cell_sz(_cell_sz), pyr_levels(_n_levels), 
         grid_cols(std::ceil(double(_w) / _cell_sz)), 
@@ -104,7 +104,7 @@ namespace vslam {
         void detect(frame_ptr host, double threshold, feature_set& features) override;
     };
 
-    fast_detector::fast_detector(int _h, int _w, int _cell_sz, size_t _n_levels) : 
+    inline fast_detector::fast_detector(int _h, int _w, int _cell_sz, size_t _n_levels) : 
         abstract_detector(_h, _w, _cell_sz, _n_levels) { }    
 }
 

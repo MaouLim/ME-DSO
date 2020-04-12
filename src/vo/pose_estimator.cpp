@@ -131,6 +131,7 @@ namespace vslam {
         const frame_ptr& cur, 
         Sophus::SE3d&    t_cr
     ) {
+        size_t total_iterations = 0;
         _t_cr = t_cr;
         auto idx = _max_level + 1;
         while (_min_level < idx) {
@@ -138,8 +139,9 @@ namespace vslam {
             _clear_cache();
             _precalc_cache(ref, idx);
             _init_graph(ref, cur, idx);
-            _optimizer.optimize(_n_iterations);
+            total_iterations += _optimizer.optimize(_n_iterations);
         }
+        return total_iterations;
     }
 
     void pose_estimator::_precalc_cache(

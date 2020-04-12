@@ -94,8 +94,8 @@ namespace vslam {
                 if (!host_frame) { continue; }
 
                 Eigen::Vector3d p_c = host_frame->t_cw * position;
-                Matrix23d jacc   = -1.0 * jaccobian_dxy1dxyz(p_c, host_frame->t_cw.rotationMatrix());
-                Matrix32d jacc_t = jacc.transpose();
+                Eigen::Matrix23d jacc   = -1.0 * jaccobian_dxy1dxyz(p_c, host_frame->t_cw.rotationMatrix());
+                Eigen::Matrix32d jacc_t = jacc.transpose();
                 Eigen::Vector2d p_xy1 = (p_c / p_c[2]).head<2>();
                 Eigen::Vector2d err = exist_ob->xy1.head<2>() - p_xy1;
                 H.noalias() +=  jacc_t * jacc;
@@ -104,7 +104,7 @@ namespace vslam {
             }
 
             Eigen::Vector3d delta = H.ldlt().solve(b);
-            if (!std::isnan(delta[0])) { assert(false); return; }
+            if (!std::isnan(delta[0])) { assert(false); return -1.; }
 
             if (0 < i && last_chi2 < chi2) {
 #ifdef _ME_SLAM_DEBUG_INFO_

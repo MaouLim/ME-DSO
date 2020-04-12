@@ -86,6 +86,7 @@ namespace vslam {
         using ptr = vptr<pinhole_camera>;
 
         pinhole_camera(int _h, int _w);
+        pinhole_camera(int _h, int _w, double _fx, double _fy, double _cx, double _cy);
         virtual ~pinhole_camera() = default;
 
         Eigen::Vector2d cam2pixel(const Eigen::Vector3d& p_c) const override;
@@ -101,9 +102,14 @@ namespace vslam {
         double fx, fy, cx, cy;
     };
 
-    pinhole_camera::pinhole_camera(int _h, int _w) : 
+    inline pinhole_camera::pinhole_camera(int _h, int _w) : 
         abstract_camera(_h, _w),
         fx(0.), fy(0.), cx(0.), cy(0.) { }
+
+    inline pinhole_camera::pinhole_camera(
+        int _h, int _w, double _fx, double _fy, double _cx, double _cy
+    ) : abstract_camera(_h, _w),
+        fx(_fx), fy(_fy), cx(_cx), cy(_cy) { }
 
     inline Eigen::Vector2d 
     pinhole_camera::cam2pixel(

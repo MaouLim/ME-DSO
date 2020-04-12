@@ -1,7 +1,6 @@
-#ifndef _ME_VSLAM_BLOCKED_QUEUE_HPP_
-#define _ME_VSLAM_BLOCKED_QUEUE_HPP_
+#ifndef _ME_VSLAM_BLOCKING_QUEUE_HPP_
+#define _ME_VSLAM_BLOCKING_QUEUE_HPP_
 
-#include <memory>
 #include <deque>
 #include <mutex>
 #include <condition_variable>

@@ -1,4 +1,5 @@
 #include <vo/homography.hpp>
+
 #include <utils/utils.hpp>
 
 namespace vslam {
@@ -151,7 +152,7 @@ namespace vslam {
         for (size_t i = 0; i < decompositions.size(); ++i) {
             Eigen::Matrix3d R = s * U * decompositions[i].rot * V.transpose();
             Eigen::Vector3d t = U * decompositions[i].trans;
-            decompositions[i].t_cr = Sophus::SE3(R, t);
+            decompositions[i].t_cr = Sophus::SE3d(R, t);
         }
 
         return true;

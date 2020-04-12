@@ -31,10 +31,10 @@ namespace utils {
         const_pointer row(size_t idx) const { return data + (idx + 1) * size_with_border + border_sz; }
         pointer       row(size_t idx)       { return data + (idx + 1) * size_with_border + border_sz; }
 
-        const_reference operator(size_t r, size_t c) const { return row(r)[c]; }
-        reference       operator(size_t r, size_t c)       { return row(r)[c]; }
+        const_reference operator()(size_t r, size_t c) const { return row(r)[c]; }
+        reference       operator()(size_t r, size_t c)       { return row(r)[c]; }
 
-        static constexpr stride() { return size_with_border; }
+        static constexpr int stride() { return size_with_border; }
     };
 
 } // namespace utils

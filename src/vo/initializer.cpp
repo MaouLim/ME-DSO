@@ -1,5 +1,4 @@
-#include <utils/config.hpp>
-#include <utils/utils.hpp>
+
 #include <vo/initializer.hpp>
 #include <vo/feature.hpp>
 #include <vo/frame.hpp>
@@ -7,22 +6,25 @@
 #include <vo/map_point.hpp>
 #include <vo/homography.hpp>
 
+#include <utils/config.hpp>
+#include <utils/utils.hpp>
+
 namespace vslam {
 
     const int initializer::min_ref_features = 
-        config::get<int>("min_ref_features");
+        utils::config::get<int>("min_ref_features");
     const int initializer::min_features_to_tracked = 
-        config::get<int>("min_features_to_tracked");   
+        utils::config::get<int>("min_features_to_tracked");   
     const double initializer::min_init_shift = 
-        config::get<double>("min_init_shift");
+        utils::config::get<double>("min_init_shift");
     const int initializer::min_inliers = 
-        config::get<int>("min_inliers");
+        utils::config::get<int>("min_inliers");
     const double initializer::map_scale = 
-        config::get<double>("map_scale");
+        utils::config::get<double>("map_scale");
     const double initializer::viewport_border = 
-        config::get<double>("viewport_border");
+        utils::config::get<double>("viewport_border");
     const double initializer::max_reprojection_err = 
-        config::get<double>("max_reprojection_err");
+        utils::config::get<double>("max_reprojection_err");
 
     initializer::op_result 
     initializer::set_first(const frame_ptr& first) 
@@ -153,8 +155,8 @@ namespace vslam {
         const int w = target->camera->width;
 
         const size_t pyr_levels       = frame::pyr_levels;
-        const int    cell_sz          = config::get<int>("cell_sz");
-        const double min_corner_score = config::get<double>("min_corner_score");
+        const int    cell_sz          = utils::config::get<int>("cell_sz");
+        const double min_corner_score = utils::config::get<double>("min_corner_score");
 
         feature_set new_features;
         fast_detector detector(h, w, cell_sz, pyr_levels);
@@ -201,9 +203,9 @@ namespace vslam {
          */ 
 
         // parameters
-        const int    lk_win_sz         = config::get<int>("lk_win_sz");
-        const size_t lk_max_iterations = config::get<int>("lk_max_iterations");
-        const double lk_eps            = config::get<double>("lk_eps");
+        const int    lk_win_sz         = utils::config::get<int>("lk_win_sz");
+        const size_t lk_max_iterations = utils::config::get<int>("lk_max_iterations");
+        const double lk_eps            = utils::config::get<double>("lk_eps");
         const size_t max_pyramid       = frame::pyr_levels;
 
         std::vector<uchar> status;

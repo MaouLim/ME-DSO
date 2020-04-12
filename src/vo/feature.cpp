@@ -2,6 +2,7 @@
 #include <vo/frame.hpp>
 #include <vo/map_point.hpp>
 #include <vo/camera.hpp>
+
 #include <utils/utils.hpp>
 
 namespace vslam {
@@ -9,7 +10,7 @@ namespace vslam {
     feature::feature(
         const frame_ptr& _host, const Eigen::Vector2d& _uv, size_t _pyr_level
     ) : type(CORNER), host_frame(_host), map_point_describing(nullptr), 
-        uv(_uv), grad_orien(1., 0., 0.), level(_pyr_level) 
+        uv(_uv), grad_orien(1., 0.), level(_pyr_level) 
     {
         assert(!host_frame.expired());
         xy1 = host_frame.lock()->camera->pixel2cam(uv, 1.0);
@@ -21,7 +22,7 @@ namespace vslam {
         const Eigen::Vector2d& _uv, 
         size_t                 _pyr_level
     ) : type(CORNER), host_frame(_host_f), map_point_describing(_mp_desc), 
-        uv(_uv), grad_orien(1., 0., 0.), level(_pyr_level) 
+        uv(_uv), grad_orien(1., 0.), level(_pyr_level) 
     {
         assert(!host_frame.expired());
         xy1 = host_frame.lock()->camera->pixel2cam(uv, 1.0);

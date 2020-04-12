@@ -1,14 +1,15 @@
-#include <utils/utils.hpp>
-#include <utils/config.hpp>
 #include <vo/frame.hpp>
 #include <vo/feature.hpp>
 #include <vo/camera.hpp>
 #include <vo/map_point.hpp>
 
+#include <utils/utils.hpp>
+#include <utils/config.hpp>
+
 namespace vslam {
 
     int    frame::_seq_id    = 0;
-    size_t frame::pyr_levels = config::get<int>("pyr_levels");
+    size_t frame::pyr_levels = utils::config::get<int>("pyr_levels");
 
     frame::frame(
         const camera_ptr& _cam, 
@@ -26,13 +27,13 @@ namespace vslam {
         pyramid = utils::create_pyramid(_img, pyr_levels);
     }
 
-    inline bool frame::visible(
+    bool frame::visible(
         const Eigen::Vector2d& p_p, double border, size_t level
     ) const {
         return camera->visible(p_p, border, level);
     }
 
-    inline bool frame::visible(
+    bool frame::visible(
         const Eigen::Vector3d& p_w, double border
     ) const {
         Eigen::Vector3d p_c = t_cw * p_w;
@@ -65,10 +66,11 @@ namespace vslam {
         for (auto& each : good_features) {
             if (_feat == each) {
                 each.reset();
+                _select_good_features();
                 return true;
             }
         }
-        _select_good_features();
+        return false;;
     }
 
     void frame::_remove_useless_features() {

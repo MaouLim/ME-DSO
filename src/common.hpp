@@ -1,6 +1,10 @@
 #ifndef _ME_VSLAM_COMMON_HPP_
 #define _ME_VSLAM_COMMON_HPP_
 
+#define CONST_EPS    1e-8
+#define CONST_COS_60 0.5
+#define CONST_COS_45 0.70711
+
 /**
  * @cpp_headers stdc++
  */
@@ -49,16 +53,23 @@
 #include <g2o/solvers/dense/linear_solver_dense.h>
 
 /**
- * @cpp_headers self
- */ 
+ * @cpp_headers vslam utils
+ */
+#include <utils/config.hpp>
 #include <utils/patch.hpp>
+#include <utils/diff.hpp>
+#include <utils/threading.hpp>
+#include <utils/utils.hpp>
 
-namespace vslam {
-
+namespace Eigen {
+    
     using Matrix23d = Eigen::Matrix<double, 2, 3>;
     using Matrix32d = Eigen::Matrix<double, 3, 2>;
     using Matrix26d = Eigen::Matrix<double, 2, 6>;
     using Matrix62d = Eigen::Matrix<double, 6, 2>;
+}
+
+namespace vslam {
 
     template <typename _Tp>
     using vptr = std::shared_ptr<_Tp>;
@@ -66,7 +77,6 @@ namespace vslam {
     template <typename _Tp>
     using wptr = std::weak_ptr<_Tp>;
 
-    struct config;
     struct feature;
     struct abstract_detector;
     struct frame;
@@ -103,8 +113,19 @@ namespace vslam {
     using patch_t = patch4b1_uint8_t;
 }
 
-#define CONST_EPS    1e-8
-#define CONST_COS_60 0.5
-#define CONST_COS_45 0.70711
+namespace utils {
+
+    /**
+     * contruct(mk->make) a smart point to indicated type _Tp
+     */ 
+    template <typename _Tp, typename... _Args>
+    vslam::vptr<_Tp> mk_vptr(_Args&&... _args) {
+        typedef typename std::remove_cv<_Tp>::type _Tp_nc;
+        return std::allocate_shared<_Tp>(
+            std::allocator<_Tp_nc>(), std::forward<_Args>(_args)...
+        );
+    }
+}
+    
 
 #endif
