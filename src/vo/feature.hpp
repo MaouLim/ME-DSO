@@ -44,8 +44,6 @@ namespace vslam {
 
     struct abstract_detector {
 
-        static const int BORDER = 8;
-
         abstract_detector(int _h, int _w, int _cell_sz, size_t _n_levels);
         virtual ~abstract_detector() = default;
 

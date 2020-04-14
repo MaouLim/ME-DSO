@@ -49,7 +49,7 @@ namespace vslam {
         double x2 = x_c * x_c, y2 = y_c * y_c, xy = x_c * y_c;
         Eigen::Matrix26d j;
         j << zinv,   0., -x_c * zinv2,      -xy * zinv2, 1. + x2 * zinv2, -y_c * zinv,
-               0., zinv, -y_c * zinv2, -1. - y2 * zinv2,      xy * zinv2,  z_c * zinv;
+               0., zinv, -y_c * zinv2, -1. - y2 * zinv2,      xy * zinv2,  x_c * zinv;
         return j;
     }
     

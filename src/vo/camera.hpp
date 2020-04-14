@@ -115,14 +115,14 @@ namespace vslam {
     pinhole_camera::cam2pixel(
         const Eigen::Vector3d& p_c
     ) const {
-        return { (fx * p_c[0] + cx) / p_c[2], (fy * p_c[0] + cy) / p_c[2] };
+        return { fx * p_c[0] / p_c[2] + cx , fy * p_c[1] / p_c[2] + cy };
     }
 
     inline Eigen::Vector3d 
     pinhole_camera::pixel2cam(
         const Eigen::Vector2d& p_p, double z
     ) const {
-        return { (p_p[0] * z - cx) / fx,  (p_p[1] * z - cy) / fy, z };
+        return { (p_p[0] - cx) * z / fx,  (p_p[1] - cy) * z / fy, z };
     }
 
     inline Eigen::Matrix3d pinhole_camera::eigen_mat() const {

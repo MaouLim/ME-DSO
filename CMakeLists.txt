@@ -58,3 +58,6 @@ target_link_libraries(FeatureTest g2o_core g2o_stuff ${OpenCV_LIBS} vslam)
 
 add_executable(PoseEstimatorTest test/test_pose_estimator.cpp)
 target_link_libraries(PoseEstimatorTest g2o_core g2o_stuff ${OpenCV_LIBS} vslam)
+
+add_executable(FCFA test/pose_estimation_fcfa.cpp)
+target_link_libraries(FCFA ${OpenCV_LIBS})

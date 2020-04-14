@@ -7,7 +7,7 @@
 int main(int argc, char** argv) {
 
     cv::Mat img_ref = cv::imread("data/01.png", cv::IMREAD_GRAYSCALE);
-    cv::Mat img_cur = cv::imread("data/02.png", cv::IMREAD_GRAYSCALE);
+    cv::Mat img_cur = cv::imread("data/04.png", cv::IMREAD_GRAYSCALE);
 
     assert(img_ref.data && img_cur.data);
 
@@ -21,8 +21,8 @@ int main(int argc, char** argv) {
 
     vslam::feature_set a, b;
 
-    detector->detect(ref, 100.0, a);
-    detector->detect(cur, 100.0, b);
+    detector->detect(ref, 200.0, a);
+    detector->detect(cur, 200.0, b);
 
     int level_counter[5] = { 0 };
 

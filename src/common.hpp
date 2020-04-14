@@ -62,7 +62,7 @@
 #include <utils/utils.hpp>
 
 namespace Eigen {
-    
+
     using Matrix23d = Eigen::Matrix<double, 2, 3>;
     using Matrix32d = Eigen::Matrix<double, 3, 2>;
     using Matrix26d = Eigen::Matrix<double, 2, 6>;

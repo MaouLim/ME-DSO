@@ -23,7 +23,7 @@ namespace utils {
         static constexpr int size_with_border = size + border_sz * 2;
         static constexpr int area_with_border = size_with_border * size_with_border;
 
-        value_type __attribute__ ((aligned (16))) data[area_with_border];
+        value_type /*__attribute__ ((aligned (16)))*/ data[area_with_border];
 
         const_pointer start() const { return data + size_with_border + border_sz;  }
         pointer       start()       { return data + size_with_border + border_sz;  }

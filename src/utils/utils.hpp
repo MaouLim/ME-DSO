@@ -145,6 +145,41 @@ namespace utils {
         return pyramid;
     }
 
+    inline Eigen::Vector2d gradient(const cv::Mat& img, double u, double v) {
+        int x = std::floor(u);
+	    int y = std::floor(v);
+        double dx = u - x;
+        double dy = v - y;
+
+        const int stride = img.step.p[0];
+        const uint8_t* ptr = img.data + y * stride + x;
+
+	    double v00 = ptr[0];
+	    double v01 = ptr[1];
+	    double v10 = ptr[stride];
+	    double v11 = ptr[stride + 1];
+
+	    return {
+	    	(1. - dy) * (v01 - v00) + dy * (v11 - v10),
+	    	(1. - dx) * (v10 - v00) + dx * (v11 - v01)
+	    };
+    }
+
+    inline Eigen::Vector2d _grad(const cv::Mat& img, double x, double y) {
+    	int x_ = std::floor(x);
+    	int y_ = std::floor(y);
+    
+    	double v00 = (double) img.at<uint8_t>(y_, x_);
+    	double v01 = (double) img.at<uint8_t>(y_, x_ + 1);
+    	double v10 = (double) img.at<uint8_t>(y_ + 1, x_);
+    	double v11 = (double) img.at<uint8_t>(y_ + 1, x_ + 1);
+    
+    	return {
+    		(y_ + 1 - y) * (v01 - v00) + (y - y_) * (v11 - v10),
+    		(x_ + 1 - x) * (v10 - v00) + (x - x_) * (v11 - v01)
+    	};
+    }
+
     /**
      * convert OpenCV data types to Eigen3 types
      */ 

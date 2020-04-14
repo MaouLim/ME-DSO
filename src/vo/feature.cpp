@@ -78,10 +78,10 @@ namespace vslam {
                 }
             }
         }
-
+        
         for (auto& each : corners) {
             if (each.score <= threshold) { continue; }
-            features.emplace_front(new feature(host, { each.x, each.y }, each.level));
+            features.emplace_front(new feature(host, Eigen::Vector2d(each.x, each.y) * (1 << each.level), each.level));
         }
         
         reset();
