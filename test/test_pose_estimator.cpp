@@ -26,7 +26,9 @@ void set_ref_frame(
         mp->set_observed_by(each_feat);
         each_feat->map_point_describing = mp;
         ref->add_feature(each_feat);
+        //std::cout << uv_level0.transpose() << std::endl;
     }
+    std::cout << "n_features: " << ref->n_features << std::endl;
 }
 
 int main(int argc, char** argv) {
@@ -48,13 +50,13 @@ int main(int argc, char** argv) {
 
     vslam::feature_set ref_feats, cur_feats;
 
-    detector->detect(ref, 200.0, ref_feats);
-    detector->detect(cur, 200.0, cur_feats);
+    detector->detect(ref, 1000.0, ref_feats);
+    detector->detect(cur, 1000.0, cur_feats);
 
     set_ref_frame(ref, ref_feats, depth_ref);
 
     Sophus::SE3d t_cr;
-    vslam::pose_estimator est(10, 0, 4);
+    vslam::pose_estimator est(10, 4, 0, vslam::pose_estimator::ICIA);
     est.estimate(ref, cur, t_cr);
 
     std::cout << "R:\n" << t_cr.rotationMatrix() << std::endl;

@@ -36,7 +36,11 @@ namespace utils {
     }
 
     inline void down_sample(const cv::Mat& src, cv::Mat& dst, double scale) {
+#ifdef _ME_VSLAM_QUALITY_
         cv::resize(src, dst, cv::Size(), scale, scale, cv::INTER_CUBIC);
+#else
+        cv::resize(src, dst, cv::Size(), scale, scale, cv::INTER_LINEAR);
+#endif
     }
 
     inline bool in_image(
@@ -136,7 +140,7 @@ namespace utils {
 
     inline std::vector<cv::Mat> 
     create_pyramid(const cv::Mat& img_level0, size_t n_levels, double scale = 0.5) {
-        std::vector<cv::Mat> pyramid(n_levels, cv::Mat());
+        std::vector<cv::Mat> pyramid(n_levels);
         pyramid[0] = img_level0;
         for (size_t i = 1; i < n_levels; ++i) {
             down_sample(pyramid[i - 1], pyramid[i], scale);
@@ -145,6 +149,9 @@ namespace utils {
         return pyramid;
     }
 
+    /**
+     * @brief compute the gradient of the p(u, v) on the image
+     */ 
     inline Eigen::Vector2d gradient(const cv::Mat& img, double u, double v) {
         int x = std::floor(u);
 	    int y = std::floor(v);
@@ -165,19 +172,9 @@ namespace utils {
 	    };
     }
 
-    inline Eigen::Vector2d _grad(const cv::Mat& img, double x, double y) {
-    	int x_ = std::floor(x);
-    	int y_ = std::floor(y);
-    
-    	double v00 = (double) img.at<uint8_t>(y_, x_);
-    	double v01 = (double) img.at<uint8_t>(y_, x_ + 1);
-    	double v10 = (double) img.at<uint8_t>(y_ + 1, x_);
-    	double v11 = (double) img.at<uint8_t>(y_ + 1, x_ + 1);
-    
-    	return {
-    		(y_ + 1 - y) * (v01 - v00) + (y - y_) * (v11 - v10),
-    		(x_ + 1 - x) * (v10 - v00) + (x - x_) * (v11 - v01)
-    	};
+    inline Eigen::Vector2d gradient_v2(const cv::Mat& img, double x, double y) {
+    	// TODO
+        return { 0., 0. };
     }
 
     /**

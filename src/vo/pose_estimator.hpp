@@ -6,6 +6,24 @@
 namespace vslam {
 
     /**
+     * @brief the base class of pose estimation algorithm 
+     */ 
+    struct _pose_est_algo {
+
+        _pose_est_algo() = default;
+
+        virtual ~_pose_est_algo() = default;
+
+        virtual size_t optimize_single_level(
+            const vslam::frame_ptr&   ref,
+            const vslam::frame_ptr&   cur,
+            size_t                    level,
+            size_t                    n_iterations,
+            Sophus::SE3d&             t_cr
+        ) = 0;
+    };
+
+    /**
      * @brief pose only estimator. given two frames, 
      *        estimate the coarse SE(3) pose.
      */ 
@@ -14,11 +32,17 @@ namespace vslam {
         static constexpr int win_half_sz = 2;
         static constexpr int win_sz      = 4;
 
-        pose_estimator(
-            size_t       n_iterations,
-            size_t       min_level,
-            size_t       max_level
+        using algo_ptr = vptr<_pose_est_algo>;
+
+        enum algorithm { FCFA, ICIA, ICIA_G2O };
+
+        explicit pose_estimator(
+            size_t    n_iterations = 10, 
+            size_t    max_level    = 4, 
+            size_t    min_level    = 0, 
+            algorithm algo         = ICIA
         );
+
         ~pose_estimator() = default;
         
         void estimate(
@@ -28,31 +52,10 @@ namespace vslam {
         );
 
     private:
-        // void _calc_residuals();
-        // void _precalc_cache(const frame_ptr& ref, size_t level);
-        // void _clear_cache();
-        // void _init_graph_and_optimize(const frame_ptr& ref, const frame_ptr& cur, size_t level);
-
-        size_t       _n_iterations;
-        size_t       _min_level;
-        size_t       _max_level;
-        //Sophus::SE3d _t_cr;
-
-        /**
-         * @brief since the the jaccobians and the feature 
-         *        patches of reference frame will be used 
-         *        several times
-         * @field caches 
-         */
-        //std::vector<Eigen::Matrix<double, patch_type::area, 6>> _jaccobians_ref;
-        //std::vector<cv::Mat>                                    _patches_ref;
-        //std::vector<bool>                                       _visibles_ref;
-
-        /**
-         * @field g2o staff
-         */ 
-        // g2o::OptimizationAlgorithm* _algo;
-        // g2o::SparseOptimizer        _optimizer;
+        size_t   _n_iterations;
+        size_t   _min_level;
+        size_t   _max_level;
+        algo_ptr _algo_impl; 
     };
     
 } // namespace vslam
