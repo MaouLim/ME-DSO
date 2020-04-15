@@ -60,7 +60,7 @@ namespace vslam {
         std::vector<bool> grid_occupied;
 
         void reset();
-        int cell_index(const Eigen::Vector2d& uv, size_t level);
+        int cell_index(const Eigen::Vector2d& uv, size_t level) const;
     };
 
     inline abstract_detector::abstract_detector(
@@ -89,7 +89,7 @@ namespace vslam {
     }
  
     inline int 
-    abstract_detector::cell_index(const Eigen::Vector2d& uv, size_t level) {
+    abstract_detector::cell_index(const Eigen::Vector2d& uv, size_t level) const {
         int scale = (1 << level);
         return int(scale * uv[1] / cell_sz) * grid_cols + int(scale * uv[0] / cell_sz);
     }
