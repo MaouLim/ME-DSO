@@ -17,10 +17,11 @@ namespace vslam {
     const bool   patch_matcher::edgelet_filtering          = true;
     const double patch_matcher::max_angle_between_epi_grad = M_PI / 4.;
 
-    bool patch_matcher::match_covisibility(
-        const map_point_ptr& mp, 
-        const frame_ptr&     cur, 
-        Eigen::Vector2d&     uv_cur
+    bool patch_matcher::match_direct(
+        const map_point_ptr&   mp, 
+        const frame_ptr&       cur, 
+        const Eigen::Vector2d& uv_cur,
+        feature_ptr&           candidate
     ) {
         auto feat_ref = mp->find_closest_observed(cur->cam_center());
         if (!feat_ref) { return false; }
@@ -57,16 +58,25 @@ namespace vslam {
                 cur->pyramid[search_level], grad_orien_cur, _patch, 
                 max_alignment_iterations, uv_leveln
             );
+            if (success) {
+                candidate.reset(new feature(cur, uv_leveln * scale, search_level));
+                candidate->type = feat_ref->type;
+                candidate->grad_orien = grad_orien_cur;
+                candidate->map_point_describing = mp;
+            }
         }
         else if (feature::CORNER == feat_ref->type) {
             success = alignment::align2d(
                 cur->pyramid[search_level], _patch, 
                 max_alignment_iterations, uv_leveln
             );
+            if (success) {
+                candidate.reset(new feature(cur, uv_leveln * scale, search_level));
+                candidate->type = feat_ref->type;
+                candidate->map_point_describing = mp;
+            }
         }
         else { assert(false); }
-
-        uv_cur = uv_leveln * scale;
         return success;
     }
 

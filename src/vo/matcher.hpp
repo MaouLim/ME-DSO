@@ -21,17 +21,19 @@ namespace vslam {
         ~patch_matcher() = default;
 
         /**
-         * @brief find the matched feature (on ref frame) using co-visibility 
-         *        and refine the feature on the current frame
+         * @brief find the matched feature (on ref frame) according to the 
+         *        smallest view angle principle and refine the feature on 
+         *        the current frame
          * @param mp     map point viewed by cur frame
          * @param cur    current frame
          * @param uv_cur the pixel coordinate (level 0) of the map point on the 
          *               current frame, and it will be refined 
          */ 
-        bool match_covisibility(
-            const map_point_ptr& mp, 
-            const frame_ptr&     cur, 
-            Eigen::Vector2d&     uv_cur
+        bool match_direct(
+            VSLAM_IN_OUT const map_point_ptr&   mp, 
+            VSLAM_IN     const frame_ptr&       cur, 
+            VSLAM_IN     const Eigen::Vector2d& uv_cur,
+            VSLAM_OUT    feature_ptr&           candidate
         );
 
         /**

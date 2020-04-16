@@ -21,7 +21,7 @@ namespace vslam {
         camera_ptr             camera;
         std::list<feature_ptr> features;
         size_t                 n_features;
-        good_features_t        good_features;
+        good_features_t        good_features; // a good feature requires a describing map point
         pyramid_t              pyramid;       // pyramid images, 0 level is the original.
 
         frame(const camera_ptr& _cam, const cv::Mat& _img, double _timestamp, bool _key_frame = false);
@@ -51,6 +51,15 @@ namespace vslam {
         void _select_good_features();
         void _check_good_feat(const feature_ptr& candidate);
     };
+
+    /**
+     * @brief helpful utility to calculate the distance between two frames
+     * @note the distance of two frames is defined as the distance of the 
+     *       optical position of the frames
+     */ 
+    inline double distance(const frame_ptr& left, const frame_ptr& right) {
+        return (left->cam_center() - right->cam_center()).norm();
+    }
 }
 
 #endif

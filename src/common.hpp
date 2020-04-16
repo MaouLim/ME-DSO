@@ -95,6 +95,15 @@ namespace vslam {
     using initializer_ptr = vptr<initializer>;   
     using matcher_ptr     = vptr<patch_matcher>;
 
+    /* smart pointers for constant types */
+    using feature_cptr     = vptr<const feature>;
+    using detector_cptr    = vptr<const abstract_detector>;
+    using frame_cptr       = vptr<const frame>;
+    using map_point_cptr   = vptr<const map_point>;
+    using camera_cptr      = vptr<const abstract_camera>;
+    using initializer_cptr = vptr<const initializer>;   
+    using matcher_cptr     = vptr<const patch_matcher>;
+
     /* weak pointers */
     using frame_wptr      = wptr<frame>;
     using map_point_wptr  = wptr<map_point>;
@@ -111,6 +120,11 @@ namespace vslam {
     using patch2b1_float64_t = utils::patch2d<double, 2, 1>;
 
     using patch_t = patch4b1_uint8_t;
+
+#define VSLAM_IN     // readonly variable
+#define VSLAM_OUT    // output variable
+#define VSLAM_IN_OUT // read and modified variable
+
 }
 
 namespace utils {

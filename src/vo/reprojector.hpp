@@ -28,7 +28,9 @@ namespace vslam {
         
         size_t _cell_idx(double x, double y) const;
         void _shuffle() { std::random_shuffle(_cells_order.begin(), _cells_order.end()); }
+
         bool _reproject(const map_point_ptr& mp, const frame_ptr& frame);
+        bool _find_match_in_cell(match_set& cell, const frame_ptr& frame);
 
         int                    _cell_sz;
         std::vector<match_set> _grid;

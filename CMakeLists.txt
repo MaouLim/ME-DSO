@@ -47,8 +47,8 @@ target_link_libraries(vslam vslam_utils g2o_core g2o_stuff ${OpenCV_LIBS} ${fast
 
 #add_executable(ThreadingTest test/test_threading.cpp)
 
-#add_executable(UtilsTest test/test_utils.cpp)
-#target_link_libraries(UtilsTest ${OpenCV_LIBS})
+add_executable(UtilsTest test/test_utils.cpp)
+target_link_libraries(UtilsTest ${OpenCV_LIBS})
 
 #add_executable(MatcherTest test/test_matcher.cpp)
 #target_link_libraries(MatcherTest ${OpenCV_LIBS} ${fast_LIBRARIES})

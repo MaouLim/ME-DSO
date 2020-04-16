@@ -18,14 +18,29 @@ namespace vslam {
         ++n_obs;
     }
 
-    feature_ptr map_point::find_observed(const frame_ptr& _frame) const {
+    feature_ptr map_point::last_observed() {
+        auto itr = observations.begin();
+        while (itr != observations.end()) {
+            if (!itr->expired()) { return itr->lock(); }
+            else { itr = observations.erase(itr); --n_obs; }
+        }
+        return nullptr;
+    }
+
+    feature_ptr map_point::find_observed(const frame_ptr& _frame) {
         assert(_frame);
-        for (auto& each_ob : observations) {
-            auto exist_ob = each_ob.lock();
-            if (!exist_ob) { continue; }
+        auto itr = observations.begin();
+        while (itr != observations.end()) {
+            auto exist_ob = itr->lock();
+            if (!exist_ob) {  
+                itr = observations.erase(itr); 
+                --n_obs; 
+                continue;
+            }
             if (_frame == exist_ob->host_frame.lock()) {
                 return exist_ob;
             }
+            else { ++itr; }
         }
         return nullptr;
     }
@@ -34,6 +49,11 @@ namespace vslam {
         assert(_frame);
         auto itr = observations.begin();
         while (itr != observations.end()) {
+            if (itr->expired()) { 
+                itr = observations.erase(itr); 
+                --n_obs;
+                continue;
+            }
             if (_frame == _get_frame(*itr)) {
                 observations.erase(itr);
                 --n_obs;
@@ -47,7 +67,7 @@ namespace vslam {
     feature_ptr 
     map_point::find_closest_observed(
         const Eigen::Vector3d& _cam_center
-    ) const {
+    ) {
         Eigen::Vector3d view_orien = _cam_center - position;
         view_orien.normalize();
 
@@ -57,7 +77,11 @@ namespace vslam {
         auto itr = observations.begin();
         while (itr != observations.end()) {
             auto exist_ob = itr->lock();
-            if (!exist_ob) { ++itr; continue; }
+            if (!exist_ob) { 
+                itr = observations.erase(itr); 
+                --n_obs;
+                continue; 
+            }
             auto exist_host_frame = exist_ob->host_frame.lock();
             if (!exist_host_frame) { ++itr; continue; }
             Eigen::Vector3d orien = exist_host_frame->cam_center() - position;
@@ -129,7 +153,7 @@ namespace vslam {
         return last_chi2;
     }
 
-    inline frame_ptr map_point::_get_frame(const feature_wptr& ob) {
+    frame_ptr map_point::_get_frame(const feature_wptr& ob) {
         auto exist_ob = ob.lock();
         if (!exist_ob) { return nullptr; }
         return exist_ob->host_frame.lock();

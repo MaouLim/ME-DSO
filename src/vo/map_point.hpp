@@ -45,8 +45,28 @@ namespace vslam {
         ~map_point() = default;
 
         void set_observed_by(const feature_ptr& _feat);
-        feature_ptr last_observed() const;
-        feature_ptr find_observed(const frame_ptr& _frame) const;
+        void clear_observations() { observations.clear(); n_obs = 0; }
+
+        /**
+         * @brief set the map point as a REMOVED point
+         */ 
+        void as_removed() { type = REMOVED; clear_observations(); }
+
+        /**
+         * @brief find the latest observing feature
+         * @note if the observing feature is weak (unable to 
+         *       upgrade as a ptr), it will be remove, until 
+         *       a strong feature is found.  
+         */
+        feature_ptr last_observed();
+
+        /**
+         * @brief sequential access the observations list to 
+         *        find the observing feature in the frame
+         * @note if the observing feature is weak (unable to 
+         *       upgrade as a ptr), it will be remove.  
+         */ 
+        feature_ptr find_observed(const frame_ptr& _frame);
         bool remove_observed_by(const frame_ptr& _frame);
 
         /**
@@ -55,7 +75,7 @@ namespace vslam {
          *        the feature is least. 
          * @param _cam_center view point
          */ 
-        feature_ptr find_closest_observed(const Eigen::Vector3d& _cam_center) const;
+        feature_ptr find_closest_observed(const Eigen::Vector3d& _cam_center);
 
         /**
          * @brief minimize the reproject error (on unit-bearing plane)

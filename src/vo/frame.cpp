@@ -70,7 +70,7 @@ namespace vslam {
                 return true;
             }
         }
-        return false;;
+        return false;
     }
 
     void frame::_remove_useless_features() {
