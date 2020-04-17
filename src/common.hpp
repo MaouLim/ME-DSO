@@ -85,24 +85,35 @@ namespace vslam {
     struct initializer;
     struct corner;
     struct patch_matcher;
+    struct map;
+    struct map_point_seed;
+    struct candidate_set;
+    struct reprojector;
+    struct depth_filter;
 
     /* smart pointers for strong types */
-    using feature_ptr     = vptr<feature>;
-    using detector_ptr    = vptr<abstract_detector>;
-    using frame_ptr       = vptr<frame>;
-    using map_point_ptr   = vptr<map_point>;
-    using camera_ptr      = vptr<abstract_camera>;
-    using initializer_ptr = vptr<initializer>;   
-    using matcher_ptr     = vptr<patch_matcher>;
+    using feature_ptr      = vptr<feature>;
+    using detector_ptr     = vptr<abstract_detector>;
+    using frame_ptr        = vptr<frame>;
+    using map_point_ptr    = vptr<map_point>;
+    using camera_ptr       = vptr<abstract_camera>;
+    using initializer_ptr  = vptr<initializer>;   
+    using matcher_ptr      = vptr<patch_matcher>;
+    using map_ptr          = vptr<map>;
+    using reprojector_ptr  = vptr<reprojector>;
+    using depth_filter_ptr = vptr<depth_filter>;
 
     /* smart pointers for constant types */
-    using feature_cptr     = vptr<const feature>;
-    using detector_cptr    = vptr<const abstract_detector>;
-    using frame_cptr       = vptr<const frame>;
-    using map_point_cptr   = vptr<const map_point>;
-    using camera_cptr      = vptr<const abstract_camera>;
-    using initializer_cptr = vptr<const initializer>;   
-    using matcher_cptr     = vptr<const patch_matcher>;
+    using feature_cptr      = vptr<const feature>;
+    using detector_cptr     = vptr<const abstract_detector>;
+    using frame_cptr        = vptr<const frame>;
+    using map_point_cptr    = vptr<const map_point>;
+    using camera_cptr       = vptr<const abstract_camera>;
+    using initializer_cptr  = vptr<const initializer>;   
+    using matcher_cptr      = vptr<const patch_matcher>;
+    using map_cptr          = vptr<const map>;
+    using reprojector_cptr  = vptr<const reprojector>;
+    using depth_filter_cptr = vptr<const depth_filter>;
 
     /* weak pointers */
     using frame_wptr      = wptr<frame>;
@@ -125,6 +136,19 @@ namespace vslam {
 #define VSLAM_OUT    // output variable
 #define VSLAM_IN_OUT // read and modified variable
 
+    template <typename _ObjTp, typename _ScoreTp>
+    using obj_with_score = std::pair<_ObjTp, _Score_Tp>;
+
+    template <typename _ObjTp, typename _ScoreTp>
+    inline bool operator<(
+        const obj_with_score<_ObjTp, _ScoreTp>& left, 
+        const obj_with_score<_ObjTp, _ScoreTp>& right
+    ) {
+        return left.second < right.second;
+    }
+
+    using frame_with_distance = obj_with_score<frame_ptr, double>;
+    using frame_with_overlaps = obj_with_score<frame_ptr, size_t>;
 }
 
 namespace utils {

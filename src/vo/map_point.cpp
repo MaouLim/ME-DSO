@@ -5,6 +5,36 @@
 
 namespace vslam {
 
+    int map_point_seed::_seed_seq = 0;
+
+    map_point_seed::map_point_seed(
+        int _gen_id, const feature_ptr& host, double d_mu, double d_min
+    ) : generation_id(_gen_id), id(_seed_seq++), count_updates(0), host_feature(host), mu(1. / d_mu), 
+        dinv_range(1. / d_min), sigma2(dinv_range * dinv_range / 36.), a(10.), b(10.) { }
+    
+    map_point_seed::~map_point_seed() {
+#ifdef _ME_VSLAM_DEBUG_INFO_
+        std::cout << "Map point seed: " << id 
+                  << " live time: "     << live_time 
+                  << std::endl;
+#endif
+    }
+
+    map_point_ptr 
+    map_point_seed::upgrade(const Sophus::SE3d& t_wc) const {
+        Eigen::Vector3d xyz_unit = host_feature->xy1.normalized();
+        Eigen::Vector3d xyz      = t_wc * (xyz_unit / mu);
+        auto mp = utils::mk_vptr<map_point>(xyz);
+        mp->set_observed_by(host_feature);
+        assert(host_feature->describe_nothing());
+        host_feature->map_point_describing = mp;
+        return mp;
+    }
+
+    /**
+     * map point methods
+     */ 
+
     int map_point::_seq_id = 0;
 
     map_point::map_point(const Eigen::Vector3d& _pos) : 
@@ -157,5 +187,98 @@ namespace vslam {
         auto exist_ob = ob.lock();
         if (!exist_ob) { return nullptr; }
         return exist_ob->host_frame.lock();
+    }
+
+    /**
+     * candidate set methods
+     */ 
+
+    void candidate_set::clear() {
+        lock_t lock(_mutex_c);
+        _candidates.clear();
+    }
+
+    bool candidate_set::add_candidate(const map_point_ptr& mp) {
+        auto latest = mp->last_observed();
+        if (!latest) { return false; }
+
+        mp->type = map_point::CANDIDATE;
+        lock_t lock(_mutex_c);
+        _candidates.emplace_back(mp, latest);
+        return true;
+    }
+
+    bool candidate_set::remove_candidate(const map_point_ptr& mp) {
+        lock_t lock(_mutex_c);
+        auto itr = _candidates.begin();
+        while (itr != _candidates.end()) {
+            if (itr->first == mp) {
+                _destroy(*itr);
+                _candidates.erase(itr);
+                return true;
+            }
+            ++itr;
+        }
+        return false;
+    }
+
+    bool candidate_set::extract_observed_by(const frame_ptr& frame) {
+        // TODO
+        lock_t lock(_mutex_c);
+        auto itr = _candidates.begin();
+        while (_candidates.end() != itr) {
+            auto host = itr->first->last_observed()->host_frame;
+            assert(!host.expired());
+            if (host.lock() == frame) {
+                itr->first->type = map_point::UNKNOWN;
+                itr->first->n_fail_reproj = 0;
+                assert(!itr->second->host_frame.expired());
+                auto latest_when_created = itr->second->host_frame.lock();
+                latest_when_created->add_feature(itr->second);
+                itr = _candidates.erase(itr);
+            }
+            else { ++itr; }
+        }
+        return true;
+    }
+
+    void candidate_set::remove_observed_by(const frame_ptr& frame) {
+        lock_t lock(_mutex_c);
+        auto itr = _candidates.begin();
+        while (itr != _candidates.end()) {
+            if (frame == itr->second->host_frame.lock()) {
+                _destroy(*itr);
+                itr = _candidates.erase(itr);
+            }
+            else { ++itr; }
+        }
+    }
+
+    template <typename _Predicate>
+    void candidate_set::for_each(_Predicate&& _pred) {
+        lock_t lock(_mutex_c);
+        for (auto& each : _candidates) { _pred(each); }
+    }
+
+    template <typename _Condition>
+    size_t candidate_set::for_each_remove_if(_Condition&& cond) {
+        size_t count_rm = 0;
+        lock_t lock(_mutex_c);
+        auto itr = _candidates.begin();
+        while (itr != _candidates.end()) {
+            if (cond(*itr)) {
+                ++count_rm;
+                _destroy(*itr);
+                itr = _candidates.erase(itr);
+            }
+            else { ++itr; }
+        }
+        return count_rm;
+    }
+
+    void candidate_set::_destroy(candidate_t& candidate) { 
+        candidate.second.reset(); 
+        candidate.first->as_removed();
+        _trash_mps.push_back(candidate.first);
     }
 }

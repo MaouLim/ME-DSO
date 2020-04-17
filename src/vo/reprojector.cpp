@@ -5,6 +5,7 @@
 #include <vo/feature.hpp>
 #include <vo/camera.hpp>
 #include <vo/matcher.hpp>
+#include <vo/map.hpp>
 
 namespace vslam {
 
@@ -15,6 +16,17 @@ namespace vslam {
         return left.first->type < right.first->type;
     }
 
+    // reprojector::_coarse_match::_coarse_match(
+    //     const map_point_ptr&   _mp, 
+    //     const Eigen::Vector2d& _uv, 
+    //     const handle_t&        _hd
+    // ) : map_point(_mp), uv(_uv), handle(_hd) 
+    // {
+    //     if (map_point::CANDIDATE == map_point->type) {
+    //         assert(handle_t(nullptr) != handle);
+    //     }
+    // }
+
     reprojector::reprojector(
         int height, int width, int cell_sz
     ) : n_matches(0), n_trials(0), _cell_sz(cell_sz), 
@@ -23,11 +35,34 @@ namespace vslam {
     {
         const int n_cells =  _rows * _cols;
         _grid.resize(n_cells);
-        _cells_order.reserve(n_cells);
+        _indices.reserve(n_cells);
         for (int i = 0; i < n_cells; ++i) {
-            _cells_order.push_back(i);
+            _indices.push_back(i);
         }
+        _matcher = utils::mk_vptr<patch_matcher>();
+    }
+
+    size_t reprojector::reproject_and_match(
+        const frame_ptr&                  frame,
+        std::vector<frame_with_distance>& kfs_with_dis,
+        candidate_set&                    candidates,
+        std::vector<frame_with_overlaps>& kfs_with_overlaps
+    ) {
+        clear();
+        
+        _reproject_covisible_kfs(frame, kfs_with_dis, kfs_with_overlaps);
+        _reproject_candidates(frame, candidates);
+
         _shuffle();
+        for (size_t i = 0; i < _grid.size(); ++i) {
+            if (max_matches <= n_matches) { break; }
+            if (_find_match_in_cell(
+                    frame, _grid[_indices[i]], candidates
+                )
+            ) { ++n_matches; }
+        }
+
+        return n_matches;
     }
 
     void reprojector::clear() {
@@ -35,7 +70,7 @@ namespace vslam {
         for (auto& cell : _grid) { cell.clear(); }
     }
 
-    bool reprojector::_reproject(const map_point_ptr& mp, const frame_ptr& frame) {
+    bool reprojector::_reproject_mp(const frame_ptr& frame, const map_point_ptr& mp) {
         Eigen::Vector2d uv = 
             frame->camera->world2pixel(mp->position, frame->t_cw);
         if (!frame->visible(uv, patch_t::half_sz/* size */)) { return false; }
@@ -43,9 +78,55 @@ namespace vslam {
         return true;
     }
 
+    bool reprojector::_reproject_covisible_kfs(
+        const frame_ptr&                  frame, 
+        std::vector<frame_with_distance>& kfs_with_dis,
+        std::vector<frame_with_overlaps>& kfs_with_overlaps
+    ) {
+        std::sort(kfs_with_dis.begin(), kfs_with_dis.end());
+
+        size_t count_kfs = 0;
+        kfs_with_overlaps.reserve(max_overlaped_kfs);
+
+        for (auto& kf_with_d : kfs_with_dis) {
+            if (max_overlaped_kfs < count_kfs) { break; }
+
+            const frame_ptr& kf = kf_with_d.first;
+
+            kfs_with_overlaps.emplace_back(kf, 0);
+            ++count_kfs;
+
+            for (auto& each_feat : kf->features) {
+                if (each_feat->describe_nothing()) { continue; }
+
+                const map_point_ptr& mp = each_feat->map_point_describing;
+
+                if (mp->last_proj_kf_id == frame->id) { continue; }
+
+                mp->last_proj_kf_id = frame->id;
+                if (_reproject_mp(frame, mp)) { kfs_with_overlaps.back().second += 1; }
+            }
+        }
+        return true;
+    }
+
+    bool reprojector::_reproject_candidates(
+        const frame_ptr& frame, candidate_set& candidates
+    ) {
+        auto elem_reproject = [&](candidate_set::candidate_t& candidate) {
+            if (!_reproject_mp(frame, candidate.first)) {
+                candidate.first->n_fail_reproj += 3;
+            }
+            return max_candidate_mp_fail_reproj < candidate.first->n_fail_reproj;
+        };
+        candidates.for_each_remove_if(elem_reproject);
+        return true;
+    }
+
     bool reprojector::_find_match_in_cell(
-        match_set&       cell, 
-        const frame_ptr& frame
+        const frame_ptr& frame, 
+        cell_type&       cell,
+        candidate_set&   candidates
     ) {
         cell.sort([](const match_type& a, const match_type& b) { return b < a; });
         auto itr = cell.begin();
@@ -72,7 +153,8 @@ namespace vslam {
                 if (map_point::CANDIDATE == mp->type && 
                     max_candidate_mp_fail_reproj < mp->n_fail_reproj)
                 {
-                    // TODO remove points from the candidates list
+                    // slow!
+                    candidates.remove_candidate(mp);
                 }
             }
 
@@ -85,7 +167,9 @@ namespace vslam {
 
             frame->add_feature(candidate);
             itr = cell.erase(itr);
+            return true;
         }
-    }
 
+        return false;
+    }
 }

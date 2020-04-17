@@ -10,21 +10,6 @@
 
 namespace vslam {
 
-    int map_point_seed::_seed_seq = 0;
-
-    map_point_seed::map_point_seed(
-        int _gen_id, const feature_ptr& host, double d_mu, double d_min
-    ) : generation_id(_gen_id), id(_seed_seq++), count_updates(0), host_feature(host), mu(1. / d_mu), 
-        dinv_range(1. / d_min), sigma2(dinv_range * dinv_range / 36.), a(10.), b(10.) { }
-    
-    map_point_seed::~map_point_seed() {
-#ifdef _ME_VSLAM_DEBUG_INFO_
-        std::cout << "Map point seed: " << id 
-                  << " live time: "     << live_time 
-                  << std::endl;
-#endif
-    }
-
     const size_t depth_filter::max_queue_sz = 5;
         //utils::config::get<int>("max_queue_sz");
 
@@ -112,9 +97,7 @@ namespace vslam {
         Eigen::Vector3d xyz_unit_ref = itr->host_feature->xy1.normalized(); 
         Eigen::Vector3d xyz_ref = xyz_unit_ref / itr->mu;
         Eigen::Vector3d xyz_world = ref->t_wc * xyz_ref;
-        if (!cur->visible(xyz_world)) {
-            ++itr; return;
-        }
+        if (!cur->visible(xyz_world)) { ++itr; return; }
 
         double dinv_max = itr->mu + std::sqrt(itr->sigma2);
         double dinv_min = std::max(itr->mu - std::sqrt(itr->sigma2), CONST_EPS);
@@ -144,11 +127,11 @@ namespace vslam {
         }
 
         if (itr->converged()) {
-            assert(itr->host_feature->describe_nothing());
-            auto new_mp = utils::mk_vptr<map_point>(xyz_world);
-            new_mp->set_observed_by(itr->host_feature);
-            itr->host_feature->map_point_describing = new_mp;
-
+            // assert(itr->host_feature->describe_nothing());
+            // auto new_mp = utils::mk_vptr<map_point>(xyz_world);
+            // new_mp->set_observed_by(itr->host_feature);
+            // itr->host_feature->map_point_describing = new_mp;
+            map_point_ptr new_mp = itr->upgrade(ref->t_wc);
             _callback(new_mp, itr->sigma2);
             itr = _seeds.erase(itr);
             return;

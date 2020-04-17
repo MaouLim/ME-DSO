@@ -1,71 +1,52 @@
-#ifndef _ME_VSLAM_CORE_HPP_
-#define _ME_VSLAM_CORE_HPP_
+#ifndef _ME_VSLAM_SYSTEM_HPP_
+#define _ME_VSLAM_SYSTEM_HPP_
 
 #include <common.hpp>
 
 namespace vslam {
 
-    struct core_sys {
+    struct system {
 
-        struct options {
-            
-        };
+        enum state_t   { NOT_INIT, RESET, RUNNING, LOST };
+        enum mode_t    { SUFFIENCY, QUALITY };
+        enum op_result {  };
 
-        enum state_t { NOT_INIT, RESET, RUNNING, LOST };
-
-        /* public field */
-        state_t          state;
-        initializer_ptr  init;
-        // tracker_t        tracker; // local map
-        // mapper_t         mapper;  // 
-        // frames_t         all_key_frames;
-        // frames_t         local_map;
-
-        core_sys(const core_sys&) = delete;
+        system(const camera_ptr& cam);
+        system(const system&) = delete;
 
         bool start();
         bool shutdown();
         void reset();
 
         bool process_image(const cv::Mat& raw_img, double timestamp);
-        
-        //  {
-        //     // TODO create new frame for the image.
-        //     frame::ptr frame;
 
-        //     if (NOT_INIT == state) {
-        //         if (init->wait_for_first_frame()) {
-        //             init->set_first(frame);
-        //         }
-        //         else if (init->track(frame)) {
-        //             this->_fill_init_info_into(frame);
-        //             this->_deliver_tracked_frame(frame, true);
-        //             state = RUNNING;
-        //         }
-        //         else {
-        //             // TODO initializer still tracking
-        //         }
-        //         return true;
-        //     }
+        const camera_ptr& camera() const { return _camera; }
+        const frame_ptr&  last_frame() const { return _last; }
 
-        //     // TODO tracker->track(frame); and decide whether the frame is a key frame
-        //     tracker->track(frame);
-        //     if (frame->key_frame) {
-        //         // TODO insert into 
-        //     }
-        // }
+    protected:
+
+        virtual op_result track_first(const frame_ptr& frame);
+        virtual op_result track_init_stage(const frame_ptr& frame);
+        virtual op_result track_frame(const frame_ptr& frame);
+        virtual op_result relocalize();
 
     private:
 
-        // void _fill_init_info_into(frame::ptr frame) {
-            
+        frame_ptr _create_frame(const cv::Mat& raw_img);
+        void _df_callback(const map_point_ptr& new_mp, double cov2);
 
-        // }
+        state_t             _state;
 
-        // // deliver the tracked frame to the mapper.
-        // void _deliver_tracked_frame(frame::ptr frame, bool key_frame) {
+        camera_ptr          _camera;
+        reprojector_ptr     _reprojector;
+        initializer_ptr     _initializer;
+        depth_filter_ptr    _depth_filter;
+        // TODO backend optimizer
 
-        // }
+        frame_ptr           _last;
+        std::set<frame_ptr> _core_kfs;
+        map_ptr             _map;
+        candidate_set       _candidates;
     };
     
 } // namespace dso

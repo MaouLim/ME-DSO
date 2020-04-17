@@ -5,32 +5,6 @@
 
 namespace vslam {
 
-    struct map_point_seed {
-
-        static constexpr double conveged_ratio = 0.005;
-
-        int         id;
-        int         generation_id;
-        int         count_updates;
-        feature_ptr host_feature;
-
-        /**
-         * @field mu     the mean of depth_inv
-         * @field sigma2 the covariance of depth_inv
-         */ 
-        double mu, sigma2; 
-        double a, b;
-        double dinv_range;
-
-        map_point_seed(int _gen_id, const feature_ptr& host, double d_mu, double d_min);
-        ~map_point_seed();
-
-        bool converged(double ratio = conveged_ratio) const { return std::sqrt(sigma2) < ratio * dinv_range; }
-
-    private:
-        static int _seed_seq;
-    };
-
     struct _df_param_msg : utils::message_base {
 
         frame_ptr frame;
@@ -51,7 +25,7 @@ namespace vslam {
         using base_type          = utils::async_executor<_df_param_msg>;
         using param_type         = typename base_type::param_type;
         using handler_type       = typename base_type::handler_type;
-        using converged_callback = std::function<void(const map_point_wptr&, double)>;
+        using converged_callback = std::function<void(const map_point_ptr&, double)>;
         using lock_t             = std::lock_guard<std::mutex>;
 
         static const size_t max_queue_sz;
