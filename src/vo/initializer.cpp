@@ -51,7 +51,7 @@ namespace vslam {
             std::cout << "Reference frame not set." << std::endl;
 #endif      
             return NO_REF_FRAME;
-         }
+        }
 
         const frame_ptr& cur = frame;
         size_t n_tracked = _track_lk(cur);

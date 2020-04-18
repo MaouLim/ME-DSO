@@ -39,7 +39,6 @@ namespace vslam {
         bool visible(const Eigen::Vector2d& p_p, double border = 0.0, size_t level = 0) const;
         bool visible(const Eigen::Vector3d& p_w, double border = 0.0) const;
 
-        void min_and_median_depth(double& min, double& median) const;
         void add_feature(const feature_ptr& _feat) { features.push_front(_feat); ++n_features; }
         bool remove_good_feature(const feature_ptr& _feat);
 
@@ -60,6 +59,8 @@ namespace vslam {
     inline double distance(const frame_ptr& left, const frame_ptr& right) {
         return (left->cam_center() - right->cam_center()).norm();
     }
+
+    bool min_and_median_depth_of_frame(const frame_ptr& frame, double& min, double& median);
 }
 
 #endif

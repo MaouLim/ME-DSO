@@ -9,7 +9,7 @@ namespace vslam {
 
         frame_ptr frame;
 
-        _df_param_msg(const frame_ptr& _frame) : frame(_frame) { }
+        explicit _df_param_msg(const frame_ptr& _frame) : frame(_frame) { }
         virtual ~_df_param_msg() = default;
 
         utils::message_catagory catagory() const override { return utils::DATA; }
@@ -39,6 +39,10 @@ namespace vslam {
 
         depth_filter(const detector_ptr& _det, const converged_callback& _cb);
         virtual ~depth_filter() = default;
+
+        bool commit(const frame_ptr& frame) { return commit(_df_param_msg(frame)); }
+        
+    protected:
 
         bool commit(const param_type& param) override;
 

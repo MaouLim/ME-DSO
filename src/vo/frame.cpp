@@ -43,25 +43,6 @@ namespace vslam {
         return camera->visible(uv, border, 0);
     }
 
-    void frame::min_and_median_depth(double& min, double& median) const {
-        assert(!features.empty() && 0 < n_features);
-
-        min = std::numeric_limits<double>::max();
-
-        std::vector<double> dvec;
-        dvec.reserve(n_features);
-
-        for (auto& each_feat : features) {
-            double d = (t_cw * each_feat->map_point_describing->position).z();
-            dvec.push_back(d);
-            min = std::min(min, d);
-        }
-
-        auto median_itr = dvec.begin() + size_t((n_features - 1) / 2);
-        std::nth_element(dvec.begin(), median_itr, dvec.end());
-        median = *median_itr;
-    }
-
     bool frame::remove_good_feature(const feature_ptr& _feat) {
         for (auto& each : good_features) {
             if (_feat == each) {
@@ -129,5 +110,31 @@ namespace vslam {
                     utils::distance_l1(candidate->uv, center)
             ) { good_features[4] = candidate; return; }
         }
+    }
+
+    bool min_and_median_depth_of_frame(
+        const frame_ptr& frame, 
+        double&          min, 
+        double&          median
+    ) {
+        if (frame->features.empty()) { return false; }
+
+        const size_t n_feats = frame->n_features;
+        min = std::numeric_limits<double>::max();
+
+        std::vector<double> zvec;
+        zvec.reserve(n_feats);
+
+        for (auto& each_feat : frame->features) {
+            double z = (frame->t_cw * each_feat->map_point_describing->position).z();
+            zvec.push_back(z);
+            min = std::min(min, z);
+        }
+
+        auto median_itr = zvec.begin() + size_t((n_feats - 1) / 2);
+        std::nth_element(zvec.begin(), median_itr, zvec.end());
+        median = *median_itr;
+
+        return true;
     }
 }

@@ -60,7 +60,7 @@ namespace vslam {
         _detector->detect(kf, min_corner_score, features);
 
         double d_min = 0., d_median = 0.;
-        kf->min_and_median_depth(d_min,  d_median);
+        min_and_median_depth_of_frame(kf, d_min,  d_median);
 
         lock_t lock(_mutex_seeds);
         for (const auto& each_feat : features) {
