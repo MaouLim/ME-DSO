@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
     set_ref_frame(ref, ref_feats, depth_ref);
 
     Sophus::SE3d t_cr;
-    vslam::pose_estimator est(10, 4, 0, vslam::pose_estimator::ICIA);
+    vslam::twoframe_estimator est(10, 4, 0, vslam::twoframe_estimator::LK_ICIA);
     est.estimate(ref, cur, t_cr);
 
     std::cout << "R:\n" << t_cr.rotationMatrix() << std::endl;

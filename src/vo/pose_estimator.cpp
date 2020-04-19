@@ -13,10 +13,10 @@ namespace icia {
      * @brief ICIA optical flow estimation
      * @cite 'Lucas-Kanade 20 Years On: A Unifying Framework'
      */ 
-    struct _algo_impl : vslam::_pose_est_algo {
+    struct _algo_impl : vslam::twoframe_estimator::algo_impl {
         
-        static constexpr int half_sz  = vslam::pose_estimator::win_half_sz;
-        static constexpr int sz       = vslam::pose_estimator::win_sz;
+        static constexpr int half_sz  = vslam::twoframe_estimator::win_half_sz;
+        static constexpr int sz       = vslam::twoframe_estimator::win_sz;
         static constexpr int area     = sz * sz;
         static constexpr int check_sz = half_sz + 1;
 
@@ -408,11 +408,11 @@ namespace icia {
 
 namespace fcfa {
 
-    struct _algo_impl : vslam::_pose_est_algo {
+    struct _algo_impl : vslam::twoframe_estimator::algo_impl {
 
-        static constexpr int check_sz = vslam::pose_estimator::win_half_sz + 1;
-        static constexpr int half_sz  = vslam::pose_estimator::win_half_sz;
-        static constexpr int sz       = vslam::pose_estimator::win_sz;
+        static constexpr int check_sz = vslam::twoframe_estimator::win_half_sz + 1;
+        static constexpr int half_sz  = vslam::twoframe_estimator::win_half_sz;
+        static constexpr int sz       = vslam::twoframe_estimator::win_sz;
 
         size_t optimize_single_level(
             const vslam::frame_ptr&   ref,
@@ -539,7 +539,7 @@ namespace fcfa {
 
 namespace vslam {
 
-    pose_estimator::pose_estimator(
+    twoframe_estimator::twoframe_estimator(
         size_t    n_iterations,
         size_t    max_level,   
         size_t    min_level,  
@@ -550,22 +550,23 @@ namespace vslam {
     {
         assert(_min_level <= _max_level);
         switch (algo) {
-            case FCFA : {
+            case LK_FCFA : {
                 _algo_impl = utils::mk_vptr<fcfa::_algo_impl>();
                 break;
             }
-            case ICIA : {
+            case LK_ICIA : {
                 _algo_impl = utils::mk_vptr<icia::_algo_impl>();
                 break;
             }
-            case ICIA_G2O : {
+            case LK_ICIA_G2O : {
                 _algo_impl = utils::mk_vptr<icia::_g2o_impl>();
+                break;
             }
             default : assert(false);
         }
     }
 
-    void pose_estimator::estimate(
+    void twoframe_estimator::estimate(
         const frame_ptr& ref, 
         const frame_ptr& cur, 
         Sophus::SE3d&    t_cr
@@ -579,3 +580,227 @@ namespace vslam {
     }
 
 } // namespace vslam
+
+namespace pnp {
+
+    struct _ba_impl : 
+        vslam::singleframe_estimator::algo_impl {
+
+        size_t estimate(
+            const vslam::frame_ptr& frame, 
+            size_t                  n_iterations,
+            Sophus::SE3d&           t_cw
+        ) override {
+
+            size_t itr = 0;
+            double last_chi2 = 0.0;
+            Sophus::SE3d last_t(t_cw);
+
+            Sophus::Matrix6d hessian;
+            Sophus::Vector6d jres;
+
+            for (; itr < n_iterations; ++itr) {
+
+                double chi2 = 0.0;
+                hessian.setZero();
+                jres.setZero();
+
+                for (auto& each : frame->features) {
+                    if (each->describe_nothing()) { continue; }
+
+                    Eigen::Vector3d xyz = t_cw * each->map_point_describing->position;
+                    Eigen::Vector2d err = each->xy1.head<2>() - utils::project(xyz);
+                    Eigen::Matrix26d jacc = vslam::jaccobian_dxy1deps(xyz);
+
+                    chi2 += 0.5 * err.norm();
+                    jres += jacc.transpose() * (-err);
+                    hessian += jacc.transpose() * jacc;
+                }
+
+                Sophus::Vector6d delta = hessian.ldlt().solve(jres);
+                if (delta.hasNaN()) { assert(false); }
+
+                if (0 < itr && last_chi2 < chi2) { 
+                    std::cout << "loss increasing at " << itr << std::endl;
+                    t_cw = last_t;
+                    chi2 = last_chi2;
+                    break;
+                }
+
+                if (delta.norm() < CONST_EPS) { 
+                    std::cout << "converged at " << itr << std::endl;
+                    break;
+                }
+
+                last_t = t_cw;
+                last_chi2 = chi2;
+
+                t_cw = Sophus::SE3d::exp(delta) * t_cw;
+            }
+
+            return itr;
+        }
+    };
+
+    struct _cv_impl : 
+        vslam::singleframe_estimator::algo_impl {
+
+        size_t estimate(
+            const vslam::frame_ptr& frame, 
+            size_t                  n_iterations,
+            Sophus::SE3d&           t_cw
+        ) override {
+            _clear_cache();
+            _load_cache(frame);
+
+            cv::Mat rvec, tvec;
+            _se3_to_cv(frame->t_cw, rvec, tvec);
+            this->cv_api(frame->camera->cv_mat(), rvec, tvec);
+            _se3_from_cv(rvec, tvec, t_cw);
+            return 1;
+        }
+
+    protected:
+        virtual void cv_api(
+            const cv::Mat& cam_mat, 
+            const cv::Mat& rvec, 
+            const cv::Mat& tvec
+        ) = 0;
+
+        void _clear_cache() { _xyzs.clear(); _uvs.clear(); }
+
+        void _load_cache(const vslam::frame_ptr& frame) {
+            _xyzs.reserve(frame->n_features);
+            _uvs.reserve(frame->n_features);
+            for (auto& each : frame->features) {
+                if (each->describe_nothing()) { continue; }
+                const auto& uv  = each->uv;
+                const auto& xyz = each->map_point_describing->position;
+                _uvs.emplace_back(uv.x(), uv.y());
+                _xyzs.emplace_back(xyz.x(), xyz.y(), xyz.z());
+            }
+        }
+
+        static void _se3_to_cv(
+            const Sophus::SE3d& t_cr, 
+            cv::Mat&            rvec, 
+            cv::Mat&            tvec
+        ) { 
+            Sophus::Vector6d se3 = t_cr.log();
+            rvec = (cv::Mat_<double>(3, 1) << se3[3], se3[4], se3[5]);
+            tvec = (cv::Mat_<double>(3, 1) << se3[0], se3[1], se3[2]);
+        }
+
+        static void _se3_from_cv(
+            const cv::Mat& rvec, 
+            const cv::Mat& tvec,
+            Sophus::SE3d&  t_cr
+        ) {
+            Sophus::Vector6d se3;
+            se3 << tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(1), 
+                   rvec.at<double>(0), rvec.at<double>(1), rvec.at<double>(1);
+            t_cr = Sophus::SE3d::exp(se3);
+        }
+
+        /**
+         * @field cache
+         */
+        std::vector<cv::Point3f> _xyzs;
+        std::vector<cv::Point2f> _uvs;
+    };
+
+    struct _pnp_refine_cv_impl : _cv_impl {
+
+        void cv_api(
+            const cv::Mat& cam_mat, 
+            const cv::Mat& rvec, 
+            const cv::Mat& tvec
+        ) override {
+            cv::solvePnPRefineLM(_xyzs, _uvs, cam_mat, cv::Mat(), rvec, tvec);
+        }
+    };
+
+    struct _epnp_cv_impl : _cv_impl {
+
+        void cv_api(
+            const cv::Mat& cam_mat, 
+            const cv::Mat& rvec, 
+            const cv::Mat& tvec
+        ) override {
+            cv::solvePnP(_xyzs, _uvs, cam_mat, cv::Mat(), rvec, tvec, true, cv::SOLVEPNP_EPNP);
+        }
+    };
+
+    struct _pnp_dls_cv_impl : _cv_impl {
+
+        void cv_api(
+            const cv::Mat& cam_mat, 
+            const cv::Mat& rvec, 
+            const cv::Mat& tvec
+        ) override {
+            cv::solvePnP(_xyzs, _uvs, cam_mat, cv::Mat(), rvec, tvec, true, cv::SOLVEPNP_DLS);
+        }
+    };
+    
+} // namespace pnp
+
+namespace vslam {
+
+    singleframe_estimator::singleframe_estimator(
+        size_t n_iterations, algorithm algo
+    ) : _n_iterations(n_iterations) 
+    {
+        switch (algo) {
+            case PNP_BA : {
+                _algo_impl = utils::mk_vptr<pnp::_ba_impl>();
+                break;
+            }
+            case PNP_G2O : { assert(false); }
+            case PNP_CV : { 
+                _algo_impl = utils::mk_vptr<pnp::_pnp_refine_cv_impl>();
+                break;
+            }
+            case EPNP_CV : {
+                _algo_impl = utils::mk_vptr<pnp::_epnp_cv_impl>();
+                break;
+            }
+            case PNP_DLS_CV : {
+                _algo_impl = utils::mk_vptr<pnp::_pnp_dls_cv_impl>();
+                break;
+            }
+            default : assert(false);
+        }
+    }
+
+    void singleframe_estimator::_compute_io_liers_and_reporj_err(
+        const frame_ptr&          frame, 
+        const Sophus::SE3d&       t_cw, 
+        double                    reproj_thresh,
+        std::vector<feature_ptr>& inliers,
+        std::vector<feature_ptr>& outliers,
+        double&                   err
+    ) {
+        err = 0;
+        inliers.clear();  inliers.reserve(frame->n_features);
+        outliers.clear(); outliers.reserve(frame->n_features);
+        
+        for (auto& each : frame->features) {
+            if (each->describe_nothing()) { 
+                outliers.emplace_back(each);
+                continue; 
+            }
+
+            Eigen::Vector2d xy_unit_plane = 
+                utils::project(t_cw * each->map_point_describing->position);
+            double each_err = (xy_unit_plane - each->xy1.head<2>()).norm();
+            err += 0.5* each_err;
+            if (reproj_thresh < each_err) { 
+                outliers.emplace_back(each);
+                continue;  
+            }
+            inliers.emplace_back(each);
+        }
+    }
+    
+} // namespace vslam
+

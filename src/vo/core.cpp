@@ -29,7 +29,7 @@ namespace vslam {
         auto callback = 
             std::bind(&system::_df_callback, this, std::placeholders::_1, std::placeholders::_2);
         _depth_filter.reset(new depth_filter(det, callback));
-        _2frame_estimator.reset(new pose_estimator(10, 4, 0, pose_estimator::FCFA));
+        _2frame_estimator.reset(new twoframe_estimator(10, 4, 0, twoframe_estimator::LK_FCFA));
     }
 
     bool system::process_image(const cv::Mat& raw_img, double timestamp) {
@@ -98,7 +98,7 @@ namespace vslam {
             return false;
         }
 
-        
+
     }
 
     frame_ptr system::_create_frame(const cv::Mat& raw_img, double timestamp) {

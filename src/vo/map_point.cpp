@@ -150,7 +150,7 @@ namespace vslam {
                 Eigen::Vector3d p_c = host_frame->t_cw * position;
                 Eigen::Matrix23d jacc   = -1.0 * jaccobian_dxy1dxyz(p_c, host_frame->t_cw.rotationMatrix());
                 Eigen::Matrix32d jacc_t = jacc.transpose();
-                Eigen::Vector2d p_xy1 = (p_c / p_c[2]).head<2>();
+                Eigen::Vector2d p_xy1 = utils::project(p_c);
                 Eigen::Vector2d err = exist_ob->xy1.head<2>() - p_xy1;
                 H.noalias() +=  jacc_t * jacc;
                 b.noalias() += -jacc_t * err;

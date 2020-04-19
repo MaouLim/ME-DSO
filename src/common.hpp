@@ -90,7 +90,7 @@ namespace vslam {
     struct candidate_set;
     struct reprojector;
     struct depth_filter;
-    struct pose_estimator;
+    struct twoframe_estimator;
 
     /* smart pointers for strong types */
     using feature_ptr      = vptr<feature>;
@@ -103,7 +103,7 @@ namespace vslam {
     using map_ptr          = vptr<map>;
     using reprojector_ptr  = vptr<reprojector>;
     using depth_filter_ptr = vptr<depth_filter>;
-    using estimator_ptr    = vptr<pose_estimator>;
+    using estimator_ptr    = vptr<twoframe_estimator>;
 
     /* smart pointers for constant types */
     using feature_cptr      = vptr<const feature>;
