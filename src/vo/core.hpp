@@ -25,12 +25,12 @@ namespace vslam {
     protected:
         virtual bool track_init_stage(const frame_ptr& new_frame);
         virtual bool track_frame(const frame_ptr& new_frame);
-        virtual bool relocalize();
+        virtual bool relocalize() { }
 
     private:
 
         frame_ptr _create_frame(const cv::Mat& raw_img, double timestamp);
-        void _df_callback(const map_point_ptr& new_mp, double cov2);
+        void _df_callback(const map_point_ptr& new_mp, double cov2) { }
 
         state_t             _state;
 

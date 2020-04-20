@@ -176,6 +176,28 @@ namespace vslam {
         std::list<candidate_t>    _candidates;
         std::list<map_point_ptr>  _trash_mps;
     };
+
+    template <typename _Predicate>
+    inline void candidate_set::for_each(_Predicate&& _pred) {
+        lock_t lock(_mutex_c);
+        for (auto& each : _candidates) { _pred(each); }
+    }
+
+    template <typename _Condition>
+    inline size_t candidate_set::for_each_remove_if(_Condition&& cond) {
+        size_t count_rm = 0;
+        lock_t lock(_mutex_c);
+        auto itr = _candidates.begin();
+        while (itr != _candidates.end()) {
+            if (cond(*itr)) {
+                ++count_rm;
+                _destroy(*itr);
+                itr = _candidates.erase(itr);
+            }
+            else { ++itr; }
+        }
+        return count_rm;
+    }
 }
 
 #endif

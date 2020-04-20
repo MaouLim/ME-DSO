@@ -254,28 +254,6 @@ namespace vslam {
         }
     }
 
-    template <typename _Predicate>
-    void candidate_set::for_each(_Predicate&& _pred) {
-        lock_t lock(_mutex_c);
-        for (auto& each : _candidates) { _pred(each); }
-    }
-
-    template <typename _Condition>
-    size_t candidate_set::for_each_remove_if(_Condition&& cond) {
-        size_t count_rm = 0;
-        lock_t lock(_mutex_c);
-        auto itr = _candidates.begin();
-        while (itr != _candidates.end()) {
-            if (cond(*itr)) {
-                ++count_rm;
-                _destroy(*itr);
-                itr = _candidates.erase(itr);
-            }
-            else { ++itr; }
-        }
-        return count_rm;
-    }
-
     void candidate_set::_destroy(candidate_t& candidate) { 
         candidate.second.reset(); 
         candidate.first->as_removed();

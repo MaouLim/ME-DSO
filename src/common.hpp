@@ -139,15 +139,15 @@ namespace vslam {
 #define VSLAM_IN_OUT // read and modified variable
 
     template <typename _ObjTp, typename _ScoreTp>
-    using obj_with_score = std::pair<_ObjTp, _Score_Tp>;
+    using obj_with_score = std::pair<_ObjTp, _ScoreTp>;
 
-    template <typename _ObjTp, typename _ScoreTp>
-    inline bool operator<(
-        const obj_with_score<_ObjTp, _ScoreTp>& left, 
-        const obj_with_score<_ObjTp, _ScoreTp>& right
-    ) {
-        return left.second < right.second;
-    }
+    // template <typename _ObjTp, typename _ScoreTp>
+    // inline bool operator<(
+    //     const obj_with_score<_ObjTp, _ScoreTp>& left, 
+    //     const obj_with_score<_ObjTp, _ScoreTp>& right
+    // ) {
+    //     return left.second < right.second;
+    // }
 
     using frame_with_distance = obj_with_score<frame_ptr, double>;
     using frame_with_overlaps = obj_with_score<frame_ptr, size_t>;

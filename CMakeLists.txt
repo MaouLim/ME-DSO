@@ -39,6 +39,9 @@ add_library(vslam SHARED
     src/vo/map_point.cpp
     src/vo/matcher.cpp
     src/vo/pose_estimator.cpp
+    src/vo/core.cpp
+    src/vo/reprojector.cpp
+    src/vo/map.cpp
 )
 target_link_libraries(vslam vslam_utils g2o_core g2o_stuff ${OpenCV_LIBS} ${fast_LIBRARIES})
 
@@ -56,8 +59,14 @@ target_link_libraries(UtilsTest ${OpenCV_LIBS})
 add_executable(FeatureTest test/test_feature.cpp)
 target_link_libraries(FeatureTest g2o_core g2o_stuff ${OpenCV_LIBS} vslam)
 
-add_executable(PoseEstimatorTest test/test_pose_estimator.cpp)
-target_link_libraries(PoseEstimatorTest g2o_core g2o_stuff ${OpenCV_LIBS} vslam)
+add_executable(TwoFrameEstimatorTest test/test_twoframe_estimator.cpp)
+target_link_libraries(TwoFrameEstimatorTest g2o_core g2o_stuff ${OpenCV_LIBS} vslam)
 
-add_executable(FCFA test/pose_estimation_fcfa.cpp)
-target_link_libraries(FCFA ${OpenCV_LIBS})
+# add_executable(FCFA test/pose_estimation_fcfa.cpp)
+# target_link_libraries(FCFA ${OpenCV_LIBS})
+
+add_executable(SingleFrameEstTest test/test_singleframe_estimator.cpp)
+target_link_libraries(SingleFrameEstTest ${OpenCV_LIBS} vslam)
+
+add_executable(CameraTest test/test_camera.cpp)
+target_link_libraries(CameraTest ${OpenCV_LIBS} vslam)

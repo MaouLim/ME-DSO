@@ -79,28 +79,16 @@ namespace vslam {
             ) = 0;
         };
 
-        enum algorithm { PNP_BA, PNP_G2O, PNP_CV, EPNP_CV, PNP_DLS_CV };
+        enum algorithm { PNP_BA, PNP_G2O/* not implement */, PNP_CV, EPNP_CV, PNP_DLS_CV };
 
         singleframe_estimator(size_t n_iterations, algorithm algo = PNP_BA);
         virtual ~singleframe_estimator() = default;
 
-        size_t estimate(
-            const frame_ptr&          frame, 
-            double                    reproj_thresh,
-            Sophus::SE3d&             t_cw, 
-            std::vector<feature_ptr>& inliers,
-            std::vector<feature_ptr>& outliers,
-            double&                   err
-        ) {
-            auto n_itr = _algo_impl->estimate(frame, _n_iterations, t_cw);
-            _compute_io_liers_and_reporj_err(
-                frame, t_cw, reproj_thresh, inliers, outliers, err
-            );
-            return n_itr;
+        size_t estimate(const frame_ptr& frame, Sophus::SE3d& t_cw) {
+            return _algo_impl->estimate(frame, _n_iterations, t_cw);
         }
 
-    private:
-        void _compute_io_liers_and_reporj_err(
+        static void compute_inliers_and_reporj_err(
             const frame_ptr&          frame, 
             const Sophus::SE3d&       t_cw, 
             double                    reproj_thresh,
@@ -108,6 +96,8 @@ namespace vslam {
             std::vector<feature_ptr>& outliers,
             double&                   err
         );
+
+    private:
 
         using algo_ptr = vptr<algo_impl>;
 

@@ -61,19 +61,5 @@ int main(int argc, char** argv) {
 
     std::cout << "R:\n" << t_cr.rotationMatrix() << std::endl;
     std::cout << "t:\n" << t_cr.translation() << std::endl;
-
-    //tx ty tz qx qy qz qw
-    // Eigen::Vector3d a_trans = { 1.1622, 0.6244, 1.4513 };
-    // Eigen::Quaterniond a_q  = { -0.2957, 0.6675, 0.6291, -0.2670 };
-    // Sophus::SE3d t_rw = { a_q, a_trans };
-
-    // Eigen::Vector3d b_trans = { 1.1322, 0.6209, 1.4078, };
-    // Eigen::Quaterniond b_q  = { -0.2793, 0.6664, 0.6314, -0.2815 };
-    // Sophus::SE3d t_cw = { b_q, b_trans };
-    
-    // Sophus::SE3d gt = t_cw * t_rw.inverse();
-
-    // std::cout << "gt R:\n" << gt.rotationMatrix() << std::endl;
-    // std::cout << "gt t:\n" << gt.translation() << std::endl;
     return 0;
 }

@@ -9,7 +9,7 @@ namespace vslam {
 
         map() : _n_key_frames(0) { }
         
-        const frame_ptr& last_key_frame() const { _key_frames.back(); }
+        const frame_ptr& last_key_frame() const { return _key_frames.back(); }
         frame_ptr key_frame(int frame_id) const;
         size_t n_key_frames() const { return _n_key_frames; }
 
@@ -37,11 +37,11 @@ namespace vslam {
         void find_covisible_key_frames(
             const frame_ptr&                  frame, 
             std::vector<frame_with_distance>& kfs_with_dis
-        );
+        ) const;
 
         // TODO
-        void update(const Sophus::SE3d& se3);
-        void update(const Sophus::Sim3d& sim3);
+        //void update(const Sophus::SE3d& se3);
+        //void update(const Sophus::Sim3d& sim3);
 
     private:
         std::list<frame_ptr> _key_frames;

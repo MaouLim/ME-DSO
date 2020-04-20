@@ -64,7 +64,7 @@ namespace vslam {
     void map::find_covisible_key_frames(
         const frame_ptr&                  frame, 
         std::vector<frame_with_distance>& kfs_with_dis
-    ) {
+    ) const {
         kfs_with_dis.clear(); kfs_with_dis.reserve(_n_key_frames);
         for (auto& each_kf : _key_frames) {
             if (frame == each_kf) { continue; }

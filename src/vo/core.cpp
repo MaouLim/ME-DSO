@@ -59,6 +59,7 @@ namespace vslam {
         }
 
         _last = new_frame;
+        return true;
     }
 
     bool system::track_init_stage(const frame_ptr& new_frame) {
@@ -92,13 +93,13 @@ namespace vslam {
         size_t n_matches = 
             _reprojector->reproject_and_match(new_frame, _kfs_with_dis, _candidates, _kfs_with_overlaps);
         
-        if (n_matches < min_reproj_matches) {
+        if (n_matches < /*min_reproj_matches*/100) {
             // TODO discard the pose estimation
 
             return false;
         }
 
-
+        return true;
     }
 
     frame_ptr system::_create_frame(const cv::Mat& raw_img, double timestamp) {

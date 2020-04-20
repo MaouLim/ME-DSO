@@ -446,7 +446,7 @@ namespace fcfa {
                 size_t feat_idx = 0;
                 for (auto& feat_ref : ref->features) {
                     if (!visibles[feat_idx] || 
-                        level != feat_ref->level || 
+                        //level != feat_ref->level || 
                         feat_ref->describe_nothing()
                     ) { ++feat_idx; continue; }
 
@@ -591,6 +591,7 @@ namespace pnp {
             size_t                  n_iterations,
             Sophus::SE3d&           t_cw
         ) override {
+            t_cw = frame->t_cw;
 
             size_t itr = 0;
             double last_chi2 = 0.0;
@@ -610,7 +611,7 @@ namespace pnp {
 
                     Eigen::Vector3d xyz = t_cw * each->map_point_describing->position;
                     Eigen::Vector2d err = each->xy1.head<2>() - utils::project(xyz);
-                    Eigen::Matrix26d jacc = vslam::jaccobian_dxy1deps(xyz);
+                    Eigen::Matrix26d jacc = vslam::jaccobian_dxy1deps(xyz) * (-1.);
 
                     chi2 += 0.5 * err.norm();
                     jres += jacc.transpose() * (-err);
@@ -697,16 +698,16 @@ namespace pnp {
             Sophus::SE3d&  t_cr
         ) {
             Sophus::Vector6d se3;
-            se3 << tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(1), 
-                   rvec.at<double>(0), rvec.at<double>(1), rvec.at<double>(1);
+            se3 << tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(2), 
+                   rvec.at<double>(0), rvec.at<double>(1), rvec.at<double>(2);
             t_cr = Sophus::SE3d::exp(se3);
         }
 
         /**
          * @field cache
          */
-        std::vector<cv::Point3f> _xyzs;
-        std::vector<cv::Point2f> _uvs;
+        std::vector<cv::Point3d> _xyzs;
+        std::vector<cv::Point2d> _uvs;
     };
 
     struct _pnp_refine_cv_impl : _cv_impl {
@@ -727,7 +728,7 @@ namespace pnp {
             const cv::Mat& rvec, 
             const cv::Mat& tvec
         ) override {
-            cv::solvePnP(_xyzs, _uvs, cam_mat, cv::Mat(), rvec, tvec, true, cv::SOLVEPNP_EPNP);
+            cv::solvePnP(_xyzs, _uvs, cam_mat, cv::Mat(), rvec, tvec, false, cv::SOLVEPNP_EPNP);
         }
     };
 
@@ -738,7 +739,7 @@ namespace pnp {
             const cv::Mat& rvec, 
             const cv::Mat& tvec
         ) override {
-            cv::solvePnP(_xyzs, _uvs, cam_mat, cv::Mat(), rvec, tvec, true, cv::SOLVEPNP_DLS);
+            cv::solvePnP(_xyzs, _uvs, cam_mat, cv::Mat(), rvec, tvec, false, cv::SOLVEPNP_DLS);
         }
     };
     
@@ -772,7 +773,7 @@ namespace vslam {
         }
     }
 
-    void singleframe_estimator::_compute_io_liers_and_reporj_err(
+    void singleframe_estimator::compute_inliers_and_reporj_err(
         const frame_ptr&          frame, 
         const Sophus::SE3d&       t_cw, 
         double                    reproj_thresh,

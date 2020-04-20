@@ -83,7 +83,12 @@ namespace vslam {
         std::vector<frame_with_distance>& kfs_with_dis,
         std::vector<frame_with_overlaps>& kfs_with_overlaps
     ) {
-        std::sort(kfs_with_dis.begin(), kfs_with_dis.end());
+        auto less_comp = [](
+            const frame_with_distance& a, 
+            const frame_with_distance& b
+        ) { return a.second < b.second; };
+
+        std::sort(kfs_with_dis.begin(), kfs_with_dis.end(), less_comp);
 
         size_t count_kfs = 0;
         kfs_with_overlaps.reserve(max_overlaped_kfs);

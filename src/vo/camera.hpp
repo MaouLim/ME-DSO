@@ -129,12 +129,13 @@ namespace vslam {
 
     inline Eigen::Matrix3d pinhole_camera::eigen_mat() const {
         Eigen::Matrix3d cam_mat;
-        cam_mat << (fx, 0, cx, 0, fy, cy, 0, 0, 1);
+        cam_mat << fx, 0, cx, 0, fy, cy, 0, 0, 1;
         return cam_mat;
     }
 
     inline cv::Mat pinhole_camera::cv_mat() const {
-        return cv::Mat_<double>(3, 3) << (fx, 0, cx, 0, fy, cy, 0, 0, 1);
+        /* it seems that OpenCV prefers float as the intrinsic data type */
+        return (cv::Mat_<float>(3, 3) << fx, 0, cx, 0, fy, cy, 0, 0, 1);
     }
 
     inline Eigen::Vector4d pinhole_camera::eigen_vec() const {
