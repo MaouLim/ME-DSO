@@ -39,7 +39,7 @@ namespace vslam {
 
     map_point::map_point(const Eigen::Vector3d& _pos) : 
         id(_seq_id++), position(_pos), n_obs(0), 
-        last_pub_timestamp(0), last_proj_kf_id(-1), last_opt_timestamp(0), 
+        last_pub_timestamp(0), last_proj_kf_id(-1), last_opt(0), 
         n_fail_reproj(0), n_success_reproj(0), type(UNKNOWN) 
     { }
 

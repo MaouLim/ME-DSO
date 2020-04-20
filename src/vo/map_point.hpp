@@ -47,7 +47,7 @@ namespace vslam {
         size_t                  n_obs;
         int                     last_pub_timestamp;
         int                     last_proj_kf_id;
-        int                     last_opt_timestamp;
+        int                     last_opt;
         int                     n_fail_reproj;
         int                     n_success_reproj;
         type_t                  type;

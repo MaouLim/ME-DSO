@@ -31,6 +31,8 @@ namespace vslam {
 
         frame_ptr _create_frame(const cv::Mat& raw_img, double timestamp);
         void _df_callback(const map_point_ptr& new_mp, double cov2) { }
+        bool _need_new_kf() { return false; }
+        void _reduce_map() { }
 
         state_t             _state;
 
@@ -38,7 +40,8 @@ namespace vslam {
         reprojector_ptr     _reprojector;
         depth_filter_ptr    _depth_filter;
         initializer_ptr     _initializer;
-        estimator_ptr       _2frame_estimator;
+        tf_estimator_ptr    _tf_estimator;
+        sf_estimator_ptr    _sf_estimator;
         // TODO backend optimizer
 
         frame_ptr           _last;
@@ -51,6 +54,9 @@ namespace vslam {
          */ 
         std::vector<frame_with_distance> _kfs_with_dis;
         std::vector<frame_with_overlaps> _kfs_with_overlaps;
+
+        std::vector<feature_ptr> _inliers;
+        std::vector<feature_ptr> _outliers;
     };
     
 } // namespace vslam
