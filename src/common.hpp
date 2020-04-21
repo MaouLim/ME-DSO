@@ -51,6 +51,7 @@
 #include <g2o/core/robust_kernel.h>
 #include <g2o/core/robust_kernel_impl.h>
 #include <g2o/solvers/dense/linear_solver_dense.h>
+#include <g2o/solvers/eigen/linear_solver_eigen.h>
 
 /**
  * @cpp_headers vslam utils

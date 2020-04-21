@@ -55,11 +55,33 @@ int main(int argc, char** argv) {
 
     set_ref_frame(ref, ref_feats, depth_ref);
 
-    Sophus::SE3d t_cr;
-    vslam::twoframe_estimator est(10, 4, 0, vslam::twoframe_estimator::LK_ICIA);
-    est.estimate(ref, cur, t_cr);
+    {
+        Sophus::SE3d t_cr;
+        vslam::twoframe_estimator est(10, 4, 0, vslam::twoframe_estimator::LK_ICIA);
+        est.estimate(ref, cur, t_cr);
 
-    std::cout << "R:\n" << t_cr.rotationMatrix() << std::endl;
-    std::cout << "t:\n" << t_cr.translation() << std::endl;
+        std::cout << "ICIA:" << std::endl;
+        std::cout << "R:\n" << t_cr.rotationMatrix() << std::endl;
+        std::cout << "t:\n" << t_cr.translation() << std::endl;
+    }
+    {
+        Sophus::SE3d t_cr;
+        vslam::twoframe_estimator est(10, 4, 0, vslam::twoframe_estimator::LK_FCFA);
+        est.estimate(ref, cur, t_cr);
+
+        std::cout << "FCFA:" << std::endl;
+        std::cout << "R:\n" << t_cr.rotationMatrix() << std::endl;
+        std::cout << "t:\n" << t_cr.translation() << std::endl;
+    }
+    {
+        Sophus::SE3d t_cr;
+        vslam::twoframe_estimator est(10, 4, 0, vslam::twoframe_estimator::LK_ICIA_G2O);
+        est.estimate(ref, cur, t_cr);
+
+        std::cout << "ICIA_G2O:" << std::endl;
+        std::cout << "R:\n" << t_cr.rotationMatrix() << std::endl;
+        std::cout << "t:\n" << t_cr.translation() << std::endl;
+    }
+
     return 0;
 }

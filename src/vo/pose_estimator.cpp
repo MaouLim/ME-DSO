@@ -756,7 +756,10 @@ namespace vslam {
                 _algo_impl = utils::mk_vptr<pnp::_ba_impl>();
                 break;
             }
-            case PNP_G2O : { assert(false); }
+            case PNP_G2O : { 
+                _algo_impl = utils::mk_vptr<pnp::_ba_impl>();
+                break; 
+            }
             case PNP_CV : { 
                 _algo_impl = utils::mk_vptr<pnp::_pnp_refine_cv_impl>();
                 break;

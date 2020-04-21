@@ -1,6 +1,7 @@
 #ifndef _ME_VSLAM_THREADING_HPP_
 #define _ME_VSLAM_THREADING_HPP_
 
+#include <vector>
 #include <functional>
 #include <thread>
 

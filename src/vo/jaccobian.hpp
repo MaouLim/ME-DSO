@@ -6,12 +6,28 @@
 namespace vslam {
 
     /**
+     * @brief calculate jaccobian mat d(uv) / d(xy1) 
+     *        d(uv): pixel coordinate (u, v, 1)'
+     *        d(xy1): unit plane coordinate (x_u, y_u, 1)'
+     *        z_c * (u, v, 1)' = K * z_c * (x_u, y_u, 1)' = K * (x_c, y_c, z_c)'
+     *        (u, v, 1)' = K * (x_u, y_u, 1)'
+     * @param focal_len (fx, fy)'
+     * @return J = [fx,  0]
+     *             [ 0, fy]
+     */  
+    inline Eigen::Matrix2d jaccobian_duvdxy1(
+        const Eigen::Vector2d focal_len
+    ) {
+        return focal_len.asDiagonal();
+    }
+
+    /**
      * @brief calculate jaccobian mat d(xy1) / d(xyz) 
-     *        d(xy1): unit-bearing coordinate (x_u, y_u, 1) in a camera pose(R, t)
-     *        d(xyz): the world coordinate of p(x, y, z)
-     *        z_c * (x_u, y_u, 1) = (x_c, y_c, z_c) = R * (x, y, z) + t
+     *        d(xy1): unit plane coordinate (x_u, y_u, 1)' in a camera pose(R, t)
+     *        d(xyz): the world coordinate of p(x, y, z)'
+     *        z_c * (x_u, y_u, 1)' = (x_c, y_c, z_c)' = R * (x, y, z)' + t
      * 
-     * @param p_c (x_c, y_c, z_c)
+     * @param p_c (x_c, y_c, z_c)'
      * @param rot R
      * @return J = [1/z_c,     0, -x_c/z_c^2] * R
      *             [    0, 1/z_c, -y_c/z_c^2]
@@ -32,9 +48,9 @@ namespace vslam {
     }
     /**
      * @brief calculate jaccobian mat d(xy1) / d(epsillon)
-     *        d(xy1): unit-bearing coordinate (x_u, y_u, 1) in a camera pose(R, t)
+     *        d(xy1): unit plane coordinate (x_u, y_u, 1)' in a camera pose(R, t)
      *        d(epsillon): epsillon = se(3) -> (R, t)
-     *        z_c * (x_u, y_u, 1) = (x_c, y_c, z_c) = exp(epsillon) * (x, y, z)
+     *        z_c * (x_u, y_u, 1)' = (x_c, y_c, z_c)' = exp(epsillon) * (x, y, z)'
      * 
      * @param p_c (x_c, y_c, z_c)
      * @return J = [1/z_c,     0, -x_c/z_c^2] * [I, -p_c^]

@@ -100,12 +100,51 @@ int main(int argc, char** argv) {
 
     cur->set_pose(coarse_t_cr);
 
-    Sophus::SE3d refined_t_cr;
-    vslam::singleframe_estimator sf_est(10, vslam::singleframe_estimator::PNP_DLS_CV);
-    sf_est.estimate(cur, refined_t_cr);
+    {
+        Sophus::SE3d refined_t_cr;
+        vslam::singleframe_estimator sf_est(10, vslam::singleframe_estimator::PNP_BA);
+        sf_est.estimate(cur, refined_t_cr);
 
-    std::cout << "Refined pose: " << std::endl;
-    std::cout << "R:\n" << refined_t_cr.rotationMatrix() << std::endl;
-    std::cout << "t:\n" << refined_t_cr.translation() << std::endl;
+        std::cout << "PNP_BA Refined pose: " << std::endl;
+        std::cout << "R:\n" << refined_t_cr.rotationMatrix() << std::endl;
+        std::cout << "t:\n" << refined_t_cr.translation() << std::endl;
+    }
+    {
+        Sophus::SE3d refined_t_cr;
+        vslam::singleframe_estimator sf_est(10, vslam::singleframe_estimator::PNP_G2O);
+        sf_est.estimate(cur, refined_t_cr);
+    
+        std::cout << "PNP_G2O Refined pose: " << std::endl;
+        std::cout << "R:\n" << refined_t_cr.rotationMatrix() << std::endl;
+        std::cout << "t:\n" << refined_t_cr.translation() << std::endl;
+    }
+    {
+        Sophus::SE3d refined_t_cr;
+        vslam::singleframe_estimator sf_est(10, vslam::singleframe_estimator::PNP_CV);
+        sf_est.estimate(cur, refined_t_cr);
+    
+        std::cout << "PNP_CV Refined pose: " << std::endl;
+        std::cout << "R:\n" << refined_t_cr.rotationMatrix() << std::endl;
+        std::cout << "t:\n" << refined_t_cr.translation() << std::endl;
+    }
+    {
+        Sophus::SE3d refined_t_cr;
+        vslam::singleframe_estimator sf_est(10, vslam::singleframe_estimator::EPNP_CV);
+        sf_est.estimate(cur, refined_t_cr);
+    
+        std::cout << "EPNP_CV Refined pose: " << std::endl;
+        std::cout << "R:\n" << refined_t_cr.rotationMatrix() << std::endl;
+        std::cout << "t:\n" << refined_t_cr.translation() << std::endl;
+    }
+    {
+        Sophus::SE3d refined_t_cr;
+        vslam::singleframe_estimator sf_est(10, vslam::singleframe_estimator::PNP_DLS_CV);
+        sf_est.estimate(cur, refined_t_cr);
+    
+        std::cout << "PNP_DLS_CV Refined pose: " << std::endl;
+        std::cout << "R:\n" << refined_t_cr.rotationMatrix() << std::endl;
+        std::cout << "t:\n" << refined_t_cr.translation() << std::endl;
+    }
+
     return 0;
 }
