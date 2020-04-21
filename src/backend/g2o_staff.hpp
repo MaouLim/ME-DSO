@@ -91,7 +91,33 @@ namespace vslam::backend {
             return res;
         }
     };
+
+    struct g2o_optimizer {
+
+        explicit g2o_optimizer(bool verbose = true, size_t n_trials = 5);
+        virtual ~g2o_optimizer() = default;
+
+        virtual void create_graph() { }
+        virtual void update() { }
+
+        std::pair<double, double> optimize(size_t n_iterations) {
+            _optimizer.clear();
+
+            this->create_graph();
+
+            _optimizer.initializeOptimization();
+            _optimizer.computeActiveErrors();
+            double err_before = _optimizer.activeChi2();
+            _optimizer.optimize(n_iterations);
+            double err_after = _optimizer.activeChi2();
+
+            return std::make_pair(err_before, err_after);
+        }
+
+    protected:
+        g2o::SparseOptimizer _optimizer; 
+    };
     
-} // namespace backend::g2o_staff
+} // namespace backend
 
 #endif

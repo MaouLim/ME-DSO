@@ -6,6 +6,8 @@
 #include <utils/utils.hpp>
 #include <utils/config.hpp>
 
+#include <backend/g2o_staff.hpp>
+
 namespace vslam {
 
     int    frame::_seq_id    = 0;
@@ -17,7 +19,7 @@ namespace vslam {
         double            _timestamp, 
         bool              _key_frame
     ) : id(_seq_id++), timestamp(_timestamp), camera(_cam), 
-        n_features(0), key_frame(_key_frame)
+        n_features(0), key_frame(_key_frame), v(nullptr)
     {
         assert(_cam->width == _img.cols && _cam->height == _img.rows);
 
@@ -53,6 +55,20 @@ namespace vslam {
         }
         return false;
     }
+
+    backend::vertex_se3* 
+    frame::create_g2o_staff(
+        int vid, bool fixed, bool marg
+    ) {
+        v = new backend::vertex_se3();
+        v->setId(vid);
+        v->setFixed(fixed);
+        v->setMarginalized(marg);
+        v->setEstimate(t_cw);
+        return v;
+    }
+
+    void frame::update_from_g2o() { this->set_pose(v->estimate()); v = nullptr; }
 
     void frame::_remove_useless_features() {
         for (auto& each : good_features) {

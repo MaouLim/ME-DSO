@@ -24,6 +24,8 @@ namespace vslam {
         good_features_t        good_features; // a good feature requires a describing map point
         pyramid_t              pyramid;       // pyramid images, 0 level is the original.
 
+        backend::vertex_se3*   v;
+
         frame(const camera_ptr& _cam, const cv::Mat& _img, double _timestamp, bool _key_frame = false);
         ~frame() = default;
 
@@ -41,6 +43,12 @@ namespace vslam {
 
         void add_feature(const feature_ptr& _feat) { features.push_front(_feat); ++n_features; }
         bool remove_good_feature(const feature_ptr& _feat);
+
+        /**
+         *@brief create g2o staff to perform bundle adjustment
+         */
+        backend::vertex_se3* create_g2o_staff(int vid, bool fixed = false, bool marg = false);
+        void update_from_g2o();
 
     private:
         static int _seq_id;

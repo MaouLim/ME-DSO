@@ -47,4 +47,33 @@ namespace vslam::backend {
         _jacobianOplusXi = -jrinv * tj_inv_adj;
         _jacobianOplusXj =  jrinv * tj_inv_adj;
     }
+
+    g2o_optimizer::g2o_optimizer(bool verbose, size_t n_trials) {
+
+        auto linear_solver = g2o::make_unique<g2o::LinearSolverCholmod<g2o::BlockSolver_6_3::PoseMatrixType>>();
+        auto block_solver  = g2o::make_unique<g2o::BlockSolver_6_3>(std::move(linear_solver));
+        
+        g2o::OptimizationAlgorithmLevenberg* algo = 
+            new g2o::OptimizationAlgorithmLevenberg(std::move(block_solver));
+        algo->setMaxTrialsAfterFailure(n_trials);
+
+        _optimizer.setAlgorithm(algo);
+        _optimizer.setVerbose(verbose);
+    }
+
+    std::pair<double, double> g2o_optimizer::optimize(size_t n_iterations) {
+
+        _optimizer.clear();
+        this->create_graph();
+
+        _optimizer.initializeOptimization();
+        _optimizer.computeActiveErrors();
+
+        double err_before = _optimizer.activeChi2();
+        _optimizer.optimize(n_iterations);
+        double err_after = _optimizer.activeChi2();
+
+        return std::make_pair(err_before, err_after);
+    }
+
 }

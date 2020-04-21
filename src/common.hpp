@@ -52,6 +52,8 @@
 #include <g2o/core/robust_kernel_impl.h>
 #include <g2o/solvers/dense/linear_solver_dense.h>
 #include <g2o/solvers/eigen/linear_solver_eigen.h>
+#include <g2o/solvers/cholmod/linear_solver_cholmod.h>
+#include <g2o/solvers/csparse/linear_solver_csparse.h>
 
 /**
  * @cpp_headers vslam utils
@@ -169,6 +171,16 @@ namespace utils {
         );
     }
 }
-    
+
+namespace vslam::backend {
+
+    struct vertex_se3;
+    struct vertex_sim3;
+    struct vertex_xyz;
+    struct edge_xyz2uv_se3;
+    struct edge_se3_to_se3;
+
+    struct g2o_optimizer;
+}
 
 #endif

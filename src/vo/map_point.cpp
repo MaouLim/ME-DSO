@@ -1,7 +1,10 @@
 #include <vo/map_point.hpp>
+
 #include <vo/jaccobian.hpp>
 #include <vo/frame.hpp>
 #include <vo/feature.hpp>
+
+#include <backend/g2o_staff.hpp>
 
 namespace vslam {
 
@@ -42,6 +45,15 @@ namespace vslam {
         last_pub_timestamp(0), last_proj_kf_id(-1), last_opt(0), 
         n_fail_reproj(0), n_success_reproj(0), type(UNKNOWN) 
     { }
+
+    void map_point::as_removed() { 
+        type = REMOVED; 
+        for (auto& each : observations) {
+            if (each.expired()) { continue; }
+            each.lock()->map_point_describing.reset();
+        }
+        clear_observations();
+    }
 
     void map_point::set_observed_by(const feature_ptr& _feat) {
         observations.emplace_front(_feat);
@@ -181,6 +193,23 @@ namespace vslam {
         }
 
         return last_chi2;
+    }
+
+    backend::vertex_xyz* 
+    map_point::create_g2o_staff(
+        int vid, bool fixed, bool marg
+    ) {
+        v = new backend::vertex_xyz();
+        v->setId(vid);
+        v->setMarginalized(marg);
+        v->setFixed(fixed);
+        v->setEstimate(position);
+        return v;
+    }
+
+    void map_point::update_from_g2o() {
+        position = v->estimate();
+        v = nullptr;
     }
 
     frame_ptr map_point::_get_frame(const feature_wptr& ob) {

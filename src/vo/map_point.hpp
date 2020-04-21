@@ -52,6 +52,8 @@ namespace vslam {
         int                     n_success_reproj;
         type_t                  type;
 
+        backend::vertex_xyz*    v;
+
         explicit map_point(const Eigen::Vector3d& _pos);
         ~map_point() = default;
 
@@ -61,7 +63,7 @@ namespace vslam {
         /**
          * @brief set the map point as a REMOVED point
          */ 
-        void as_removed() { type = REMOVED; clear_observations(); }
+        void as_removed();
 
         /**
          * @brief find the latest observing feature
@@ -89,10 +91,16 @@ namespace vslam {
         feature_ptr find_closest_observed(const Eigen::Vector3d& _cam_center);
 
         /**
-         * @brief minimize the reproject error (on unit-bearing plane)
+         * @brief minimize the reproject error (on unit plane)
          * @return the error after iterations
          */ 
         double local_optimize(size_t n_iterations);
+
+        /**
+         *@brief create g2o staff to perform bundle adjustment
+         */
+        backend::vertex_xyz* create_g2o_staff(int vid, bool fixed = false, bool marg = false);
+        void update_from_g2o();
 
     private:
         static int _seq_id; // to generate id;
