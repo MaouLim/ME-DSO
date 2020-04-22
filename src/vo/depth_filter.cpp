@@ -127,10 +127,6 @@ namespace vslam {
         }
 
         if (itr->converged()) {
-            // assert(itr->host_feature->describe_nothing());
-            // auto new_mp = utils::mk_vptr<map_point>(xyz_world);
-            // new_mp->set_observed_by(itr->host_feature);
-            // itr->host_feature->map_point_describing = new_mp;
             map_point_ptr new_mp = itr->upgrade(ref->t_wc);
             _callback(new_mp, itr->sigma2);
             itr = _seeds.erase(itr);

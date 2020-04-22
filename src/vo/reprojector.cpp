@@ -170,7 +170,7 @@ namespace vslam {
                 mp->type = map_point::GOOD;
             }
 
-            frame->add_feature(candidate);
+            candidate->use();
             itr = cell.erase(itr);
             return true;
         }

@@ -61,13 +61,15 @@ void set_frames(
         vslam::feature_ptr feat_cur = utils::mk_vptr<vslam::feature>(cur, uv_cur, 5);
         vslam::map_point_ptr mp = utils::mk_vptr<vslam::map_point>(xyz_ref);
 
-        feat_ref->map_point_describing = mp;
-        feat_cur->map_point_describing = mp;
-        mp->set_observed_by(feat_ref);
-        mp->set_observed_by(feat_cur);
+        // feat_ref->map_point_describing = mp;
+        // feat_cur->map_point_describing = mp;
+        // mp->_set_observed_by(feat_ref);
+        // mp->_set_observed_by(feat_cur);
+        feat_ref->set_describing(mp);
+        feat_cur->set_describing(mp);
 
-        ref->add_feature(feat_ref);
-        cur->add_feature(feat_cur);
+        feat_ref->use();
+        feat_cur->use();
     }
 
     std::cout << "Count Points: " << count_points << std::endl;

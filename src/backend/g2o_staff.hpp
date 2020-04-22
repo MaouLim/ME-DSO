@@ -44,12 +44,12 @@ namespace vslam::backend {
      * @param measurement the uv pixel coordinate to represent
      *                    map points on the frames
      */ 
-    struct edge_xyz2uv_se3 : 
+    struct edge_xyz2uv : 
         g2o::BaseBinaryEdge<2, Eigen::Vector2d, vertex_xyz, vertex_se3> {
 
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-        edge_xyz2uv_se3(const vslam::camera_ptr& _cam) : camera(_cam) { }
+        edge_xyz2uv(const vslam::camera_ptr& _cam) : camera(_cam) { }
 
         bool read(std::istream& is) override { return false; }
         bool write(std::ostream& os) const override { return false; }
@@ -58,6 +58,25 @@ namespace vslam::backend {
         void linearizeOplus() override;
 
         vslam::camera_ptr camera;
+    };
+
+    /**
+     * @brief error edge between pose nodes and landmark nodes
+     * @param measurement xy1 the unit plane coordinate to represent
+     *                    map points on the frames
+     */
+    struct edge_xyz2xy1 : 
+        g2o::BaseBinaryEdge<2, Eigen::Vector3d, vertex_xyz, vertex_se3> {
+        
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+        edge_xyz2xy1() = default;
+
+        bool read(std::istream& is) override { return false; }
+        bool write(std::ostream& os) const override { return false; }
+
+        void computeError() override;
+        void linearizeOplus() override;
     };
 
     /**
@@ -117,6 +136,24 @@ namespace vslam::backend {
     protected:
         g2o::SparseOptimizer _optimizer; 
     };
+
+    // struct g2o_estimable {
+
+    //     g2o_estimable() : v(nullptr) { }
+    //     virtual ~g2o_estimable() = default;
+    //     virtual g2o::OptimizableGraph::Vertex* as_estimation(int vid, bool fixed, bool marg) = 0;
+    //     virtual void update_from_g2o() = 0;
+
+    //     g2o::OptimizableGraph::Vertex* v;
+    // };
+
+    // struct g2o_measurable {
+
+    //     virtual ~g2o_measurable() = default;
+    //     virtual g2o::OptimizableGraph::Edge* as_measurement(int eid);
+
+    //     g2o::OptimizableGraph::Edge* e;
+    // };
     
 } // namespace backend
 

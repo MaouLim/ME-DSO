@@ -47,8 +47,9 @@ namespace vslam {
         /**
          *@brief create g2o staff to perform bundle adjustment
          */
-        backend::vertex_se3* create_g2o_staff(int vid, bool fixed = false, bool marg = false);
-        void update_from_g2o();
+        backend::vertex_se3* create_g2o(int vid, bool fixed = false, bool marg = false);
+        bool update_from_g2o();
+        void shutdown_g2o() { v = nullptr; }
 
     private:
         static int _seq_id;

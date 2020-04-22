@@ -23,9 +23,8 @@ void set_ref_frame(
         double z = (double) d * depth_scale;
         Eigen::Vector3d xyz_ref = ref->camera->pixel2cam(uv_level0, z);
         vslam::map_point_ptr mp = utils::mk_vptr<vslam::map_point>(xyz_ref);
-        mp->set_observed_by(each_feat);
-        each_feat->map_point_describing = mp;
-        ref->add_feature(each_feat);
+        each_feat->set_describing(mp);
+        each_feat->use();
         //std::cout << uv_level0.transpose() << std::endl;
     }
     std::cout << "n_features: " << ref->n_features << std::endl;

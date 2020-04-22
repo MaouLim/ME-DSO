@@ -104,7 +104,7 @@ namespace vslam {
         );
 
         // for outliers, remove the association with the map point
-        for (auto& each : _outliers) { each->map_point_describing = nullptr; }
+        for (auto& each : _outliers) { each->reset_describing(); }
 
         // for inliers, local optimize the map point in the view of new frame
         if (_inliers.size() < /*min_reproj_inliers*/90) {
@@ -142,12 +142,12 @@ namespace vslam {
         new_frame->as_key_frame();
         // set the latest observation 
         for (auto& each : _inliers) { 
-            each->map_point_describing->set_observed_by(each); 
+            assert(each->map_point_describing->last_observation() == each);
         }
         _candidates.extract_observed_by(new_frame);
         _depth_filter->commit(new_frame);
 
-        //TODO if the key frame in map is too much, try to reduce the global map
+        //TODO if there is too much key frames in the global map, try to reduce the map
         _reduce_map();
 
         _map->add_key_frame(new_frame);

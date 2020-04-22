@@ -39,6 +39,8 @@ namespace vslam {
 
     struct map_point {
 
+        friend struct feature;
+
         enum type_t { REMOVED, CANDIDATE, UNKNOWN, GOOD };
 
         int                     id;
@@ -57,11 +59,9 @@ namespace vslam {
         explicit map_point(const Eigen::Vector3d& _pos);
         ~map_point() = default;
 
-        void set_observed_by(const feature_ptr& _feat);
-        void clear_observations() { observations.clear(); n_obs = 0; }
-
         /**
-         * @brief set the map point as a REMOVED point
+         * @brief set the map point as a REMOVED point, and remove the
+         *        reference in the all describing features
          */ 
         void as_removed();
 
@@ -71,15 +71,23 @@ namespace vslam {
          *       upgrade as a ptr), it will be remove, until 
          *       a strong feature is found.  
          */
-        feature_ptr last_observed();
+        feature_ptr last_observation();
+
+        /**
+         * @brief search and remove the observing feature
+         * @note if the observing feature is weak (unable to 
+         *       upgrade as a ptr), it will be remove, until 
+         *       a strong feature is found.  
+         */
+        bool remove_observation(const feature_ptr& _feat);
 
         /**
          * @brief sequential access the observations list to 
-         *        find the observing feature in the frame
+         *        find the observing feature on the frame
          * @note if the observing feature is weak (unable to 
          *       upgrade as a ptr), it will be remove.  
          */ 
-        feature_ptr find_observed(const frame_ptr& _frame);
+        feature_ptr find_observed_by(const frame_ptr& _frame);
         bool remove_observed_by(const frame_ptr& _frame);
 
         /**
@@ -97,16 +105,46 @@ namespace vslam {
         double local_optimize(size_t n_iterations);
 
         /**
+         * @brief since that some of the observations are expired, direct 
+         *        accessing is dangerous, the function helps access the 
+         *        observations by skiping the expiring observations 
+         *        (just remove them)
+         */ 
+        template <typename _Predicate>
+        void for_each_observation(_Predicate&& pred);
+
+        /**
          *@brief create g2o staff to perform bundle adjustment
          */
-        backend::vertex_xyz* create_g2o_staff(int vid, bool fixed = false, bool marg = false);
-        void update_from_g2o();
+        backend::vertex_xyz* create_g2o(int vid, bool fixed = false, bool marg = false);
+        bool update_from_g2o();
+        void shutdown_g2o() { v = nullptr; }
 
     private:
+        /**
+         *@brief build unidirectional connection to the describing feature
+         */
+        void _set_observed_by(const feature_ptr& _feat);
+        void _clear_observations() { observations.clear(); n_obs = 0; }
+        bool _expired(const feature_wptr& ob) const;
+
         static int _seq_id; // to generate id;
 
         static frame_ptr _get_frame(const feature_wptr& ob);
     };
+
+    template <typename _Predicate>
+    inline void map_point::for_each_observation(_Predicate&& pred) {
+        auto itr = observations.begin();
+        while (itr != observations.end()) {
+            if (_expired(*itr)) {
+                itr = observations.erase(itr); --n_obs;
+                continue;
+            }
+            pred(*itr);
+            ++itr;
+        }
+    }
 
     /**
      * @brief a container stores the <map point, feature> pairs

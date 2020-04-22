@@ -60,9 +60,9 @@ namespace vslam {
             );
             if (success) {
                 candidate.reset(new feature(cur, uv_leveln * scale, search_level));
-                candidate->type = feat_ref->type;
+                candidate->type = feature::EDGELET;
                 candidate->grad_orien = grad_orien_cur;
-                candidate->map_point_describing = mp;
+                candidate->set_describing(mp);
             }
         }
         else if (feature::CORNER == feat_ref->type) {
@@ -72,8 +72,8 @@ namespace vslam {
             );
             if (success) {
                 candidate.reset(new feature(cur, uv_leveln * scale, search_level));
-                candidate->type = feat_ref->type;
-                candidate->map_point_describing = mp;
+                candidate->type = feature::CORNER;
+                candidate->set_describing(mp);
             }
         }
         else { assert(false); }

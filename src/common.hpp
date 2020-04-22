@@ -177,7 +177,8 @@ namespace vslam::backend {
     struct vertex_se3;
     struct vertex_sim3;
     struct vertex_xyz;
-    struct edge_xyz2uv_se3;
+    struct edge_xyz2uv;
+    struct edge_xyz2xy1;
     struct edge_se3_to_se3;
 
     struct g2o_optimizer;

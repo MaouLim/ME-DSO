@@ -46,6 +46,7 @@ namespace vslam {
     }
 
     bool frame::remove_good_feature(const feature_ptr& _feat) {
+        if (!_feat || !_feat->good) { return false; }
         for (auto& each : good_features) {
             if (_feat == each) {
                 each.reset();
@@ -57,23 +58,31 @@ namespace vslam {
     }
 
     backend::vertex_se3* 
-    frame::create_g2o_staff(
+    frame::create_g2o(
         int vid, bool fixed, bool marg
     ) {
+        if (v) { return v; }
         v = new backend::vertex_se3();
         v->setId(vid);
         v->setFixed(fixed);
-        v->setMarginalized(marg);
+        if (!fixed) { v->setMarginalized(marg); }
         v->setEstimate(t_cw);
         return v;
     }
 
-    void frame::update_from_g2o() { this->set_pose(v->estimate()); v = nullptr; }
+    bool frame::update_from_g2o() { 
+        if (!v) { return false; }
+        this->set_pose(v->estimate()); 
+        v = nullptr; 
+        return true;
+    }
 
     void frame::_remove_useless_features() {
         for (auto& each : good_features) {
             if (!each) { continue; }
-            if (each->describe_nothing()) { each.reset(); }
+            if (each->describe_nothing() || !each->good) { 
+                assert(false); each.reset(); 
+            }
         }
     }
 
@@ -92,14 +101,14 @@ namespace vslam {
             !good_features[0] || 
                 utils::distance_l1(candidate->uv, center) < 
                 utils::distance_l1(good_features[0]->uv, center)
-        ) { good_features[0] = candidate; return; }
+        ) { candidate->as_good(); good_features[0] = candidate; return; }
 
         if (center[0] < candidate->uv[0] && center[1] < candidate->uv[1]) {
             if (
                 !good_features[1] || 
                     utils::distance_l1(good_features[1]->uv, center) < 
                     utils::distance_l1(candidate->uv, center)
-            ) { good_features[1] = candidate; return; }
+            ) { candidate->as_good(); good_features[1] = candidate; return; }
         }
 
         if (center[0] < candidate->uv[0] && center[1] >= candidate->uv[1]) {
@@ -107,7 +116,7 @@ namespace vslam {
                 !good_features[2] || 
                     utils::distance_l1(good_features[2]->uv, center) < 
                     utils::distance_l1(candidate->uv, center)
-            ) { good_features[2] = candidate; return; }
+            ) { candidate->as_good(); good_features[2] = candidate; return; }
         }
 
         if (center[0] >= candidate->uv[0] && center[1] >= candidate->uv[1]) {
@@ -115,7 +124,7 @@ namespace vslam {
                 !good_features[3] || 
                     utils::distance_l1(good_features[3]->uv, center) < 
                     utils::distance_l1(candidate->uv, center)
-            ) { good_features[3] = candidate; return; }
+            ) { candidate->as_good(); good_features[3] = candidate; return; }
         }
 
         assert(center[0] >= candidate->uv[0] && center[1] < candidate->uv[1]);
@@ -124,7 +133,7 @@ namespace vslam {
                 !good_features[4] || 
                     utils::distance_l1(good_features[4]->uv, center) < 
                     utils::distance_l1(candidate->uv, center)
-            ) { good_features[4] = candidate; return; }
+            ) { candidate->as_good(); good_features[4] = candidate; return; }
         }
     }
 

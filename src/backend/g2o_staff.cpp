@@ -19,19 +19,33 @@ namespace vslam::backend {
         _estimate = _estimate + update;
     }
 
-    void edge_xyz2uv_se3::computeError() {
+    void edge_xyz2uv::computeError() {
         const vertex_xyz* v0 = static_cast<const vertex_xyz*>(_vertices[0]);
         const vertex_se3* v1 = static_cast<const vertex_se3*>(_vertices[1]);
         _error = _measurement - camera->cam2pixel(v1->estimate() * v0->estimate());
     }
 
-    void edge_xyz2uv_se3::linearizeOplus() {
+    void edge_xyz2uv::linearizeOplus() {
         const vertex_xyz* v0 = static_cast<const vertex_xyz*>(_vertices[0]);
         const vertex_se3* v1 = static_cast<const vertex_se3*>(_vertices[1]);
         Eigen::Vector3d xyz = v1->estimate() * v0->estimate();
         Eigen::Matrix2d duvdxy1 = camera->focal_len().asDiagonal();
         _jacobianOplusXi = -1.0 * duvdxy1 * vslam::jaccobian_dxy1dxyz(xyz, v1->estimate().rotationMatrix());
         _jacobianOplusXj = -1.0 * duvdxy1 * vslam::jaccobian_dxy1deps(xyz);
+    }
+
+    void edge_xyz2xy1::computeError() {
+        const vertex_xyz* v0 = static_cast<const vertex_xyz*>(_vertices[0]);
+        const vertex_se3* v1 = static_cast<const vertex_se3*>(_vertices[1]);
+        _error = utils::project(_measurement) - utils::project(v1->estimate() * v0->estimate());
+    }
+
+    void edge_xyz2xy1::linearizeOplus() {
+        const vertex_xyz* v0 = static_cast<const vertex_xyz*>(_vertices[0]);
+        const vertex_se3* v1 = static_cast<const vertex_se3*>(_vertices[1]);
+        Eigen::Vector3d xyz = v1->estimate() * v0->estimate();
+        _jacobianOplusXi = -1.0 * vslam::jaccobian_dxy1dxyz(xyz, v1->estimate().rotationMatrix());
+        _jacobianOplusXj = -1.0 * vslam::jaccobian_dxy1deps(xyz);
     }
 
     void edge_se3_to_se3::computeError() {

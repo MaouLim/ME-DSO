@@ -127,11 +127,8 @@ namespace vslam {
                     utils::mk_vptr<feature>(ref, mp, uv_ref, 0);
                 feature_ptr feat_cur = 
                     utils::mk_vptr<feature>(cur, mp, uv_cur, 0);
-                
-                cur->add_feature(feat_cur);
-                ref->add_feature(feat_ref);
-                mp->set_observed_by(feat_cur);
-                mp->set_observed_by(feat_ref);
+                feat_ref->use();
+                feat_cur->use();
             }
         }
         return SUCCESS;

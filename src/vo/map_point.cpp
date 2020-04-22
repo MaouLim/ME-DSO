@@ -28,9 +28,7 @@ namespace vslam {
         Eigen::Vector3d xyz_unit = host_feature->xy1.normalized();
         Eigen::Vector3d xyz      = t_wc * (xyz_unit / mu);
         auto mp = utils::mk_vptr<map_point>(xyz);
-        mp->set_observed_by(host_feature);
-        assert(host_feature->describe_nothing());
-        host_feature->map_point_describing = mp;
+        assert(host_feature->set_describing(mp));
         return mp;
     }
 
@@ -47,38 +45,53 @@ namespace vslam {
     { }
 
     void map_point::as_removed() { 
-        type = REMOVED; 
+        if (type == REMOVED) { return; }
         for (auto& each : observations) {
-            if (each.expired()) { continue; }
-            each.lock()->map_point_describing.reset();
+            if (_expired(each)) { continue; }
+            each.lock()->reset_describing();
         }
-        clear_observations();
+        _clear_observations();
+        type = REMOVED; 
     }
 
-    void map_point::set_observed_by(const feature_ptr& _feat) {
-        observations.emplace_front(_feat);
-        ++n_obs;
-    }
-
-    feature_ptr map_point::last_observed() {
+    feature_ptr map_point::last_observation() {
         auto itr = observations.begin();
         while (itr != observations.end()) {
-            if (!itr->expired()) { return itr->lock(); }
-            else { itr = observations.erase(itr); --n_obs; }
+            if (_expired(*itr)) { 
+                itr = observations.erase(itr); --n_obs;
+                continue;
+            }
+            return itr->lock();
         }
         return nullptr;
     }
 
-    feature_ptr map_point::find_observed(const frame_ptr& _frame) {
+    bool map_point::remove_observation(const feature_ptr& _feat) {
+        assert(_feat);
+        auto itr = observations.begin();
+        while (itr != observations.end()) {
+            if (_expired(*itr)) { 
+                itr = observations.erase(itr); --n_obs;
+                continue;
+            }
+            if (_feat == itr->lock()) {
+                observations.erase(itr); --n_obs;
+                return true;
+            }
+            ++itr;
+        }
+        return false;
+    }
+
+    feature_ptr map_point::find_observed_by(const frame_ptr& _frame) {
         assert(_frame);
         auto itr = observations.begin();
         while (itr != observations.end()) {
-            auto exist_ob = itr->lock();
-            if (!exist_ob) {  
-                itr = observations.erase(itr); 
-                --n_obs; 
+            if (_expired(*itr)) { 
+                itr = observations.erase(itr); --n_obs;
                 continue;
             }
+            auto exist_ob = itr->lock();
             if (_frame == exist_ob->host_frame.lock()) {
                 return exist_ob;
             }
@@ -91,14 +104,12 @@ namespace vslam {
         assert(_frame);
         auto itr = observations.begin();
         while (itr != observations.end()) {
-            if (itr->expired()) { 
-                itr = observations.erase(itr); 
-                --n_obs;
+            if (_expired(*itr)) { 
+                itr = observations.erase(itr); --n_obs;
                 continue;
             }
             if (_frame == _get_frame(*itr)) {
-                observations.erase(itr);
-                --n_obs;
+                observations.erase(itr); --n_obs;
                 return true;
             }
             ++itr;
@@ -118,12 +129,11 @@ namespace vslam {
 
         auto itr = observations.begin();
         while (itr != observations.end()) {
-            auto exist_ob = itr->lock();
-            if (!exist_ob) { 
-                itr = observations.erase(itr); 
-                --n_obs;
-                continue; 
+            if (_expired(*itr)) {
+                itr = observations.erase(itr); --n_obs;
+                continue;
             }
+            auto exist_ob = itr->lock();
             auto exist_host_frame = exist_ob->host_frame.lock();
             if (!exist_host_frame) { ++itr; continue; }
             Eigen::Vector3d orien = exist_host_frame->cam_center() - position;
@@ -153,9 +163,9 @@ namespace vslam {
             H.setZero(); b.setZero();
 
             for (auto& feature_observed : observations) {
-
+                if (_expired(feature_observed)) { continue; }
+                
                 auto exist_ob = feature_observed.lock();
-                if (!exist_ob) { continue; }
                 auto host_frame = exist_ob->host_frame.lock();
                 if (!host_frame) { continue; }
 
@@ -196,20 +206,33 @@ namespace vslam {
     }
 
     backend::vertex_xyz* 
-    map_point::create_g2o_staff(
+    map_point::create_g2o(
         int vid, bool fixed, bool marg
     ) {
+        if (v) { return v; }
         v = new backend::vertex_xyz();
         v->setId(vid);
-        v->setMarginalized(marg);
         v->setFixed(fixed);
+        if (!fixed) { v->setMarginalized(marg); }
         v->setEstimate(position);
         return v;
     }
 
-    void map_point::update_from_g2o() {
+    bool map_point::update_from_g2o() {
+        if (!v) { return false; }
         position = v->estimate();
         v = nullptr;
+        return true;
+    }
+
+    void map_point::_set_observed_by(const feature_ptr& _feat) {
+        assert(_feat);
+        observations.emplace_front(_feat);
+        ++n_obs;
+    }
+
+    bool map_point::_expired(const feature_wptr& ob) const {
+        return ob.expired() || (this != ob.lock()->map_point_describing.get());
     }
 
     frame_ptr map_point::_get_frame(const feature_wptr& ob) {
@@ -228,7 +251,8 @@ namespace vslam {
     }
 
     bool candidate_set::add_candidate(const map_point_ptr& mp) {
-        auto latest = mp->last_observed();
+        if (!mp || map_point::REMOVED == mp->type) { return false; }
+        auto latest = mp->last_observation();
         if (!latest) { return false; }
 
         mp->type = map_point::CANDIDATE;
@@ -238,6 +262,7 @@ namespace vslam {
     }
 
     bool candidate_set::remove_candidate(const map_point_ptr& mp) {
+        if (!mp) { return false; }
         lock_t lock(_mutex_c);
         auto itr = _candidates.begin();
         while (itr != _candidates.end()) {
@@ -256,14 +281,12 @@ namespace vslam {
         lock_t lock(_mutex_c);
         auto itr = _candidates.begin();
         while (_candidates.end() != itr) {
-            auto host = itr->first->last_observed()->host_frame;
+            auto host = itr->first->last_observation()->host_frame;
             assert(!host.expired());
             if (host.lock() == frame) {
                 itr->first->type = map_point::UNKNOWN;
                 itr->first->n_fail_reproj = 0;
-                assert(!itr->second->host_frame.expired());
-                auto latest_when_created = itr->second->host_frame.lock();
-                latest_when_created->add_feature(itr->second);
+                itr->second->use();
                 itr = _candidates.erase(itr);
             }
             else { ++itr; }
@@ -272,6 +295,7 @@ namespace vslam {
     }
 
     void candidate_set::remove_observed_by(const frame_ptr& frame) {
+        if (!frame) { return; }
         lock_t lock(_mutex_c);
         auto itr = _candidates.begin();
         while (itr != _candidates.end()) {
