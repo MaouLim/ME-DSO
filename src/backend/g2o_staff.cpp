@@ -12,6 +12,11 @@ namespace vslam::backend {
     }
 
     //TODO sim3
+    void vertex_sim3::oplusImpl(const number_t* d) {
+        Sophus::Vector7d update;
+        update << d[0], d[1], d[2], d[3], d[4], d[5], d[6];
+        _estimate = Sophus::Sim3d::exp(update) * _estimate;
+    }
 
     void vertex_xyz::oplusImpl(const number_t* d) {
         Eigen::Vector3d update;
@@ -34,18 +39,32 @@ namespace vslam::backend {
         _jacobianOplusXj = -1.0 * duvdxy1 * vslam::jaccobian_dxy1deps(xyz);
     }
 
-    void edge_xyz2xy1::computeError() {
+    void edge_xyz2xy1_se3::computeError() {
         const vertex_xyz* v0 = static_cast<const vertex_xyz*>(_vertices[0]);
         const vertex_se3* v1 = static_cast<const vertex_se3*>(_vertices[1]);
         _error = utils::project(_measurement) - utils::project(v1->estimate() * v0->estimate());
     }
 
-    void edge_xyz2xy1::linearizeOplus() {
+    void edge_xyz2xy1_se3::linearizeOplus() {
         const vertex_xyz* v0 = static_cast<const vertex_xyz*>(_vertices[0]);
         const vertex_se3* v1 = static_cast<const vertex_se3*>(_vertices[1]);
         Eigen::Vector3d xyz = v1->estimate() * v0->estimate();
         _jacobianOplusXi = -1.0 * vslam::jaccobian_dxy1dxyz(xyz, v1->estimate().rotationMatrix());
         _jacobianOplusXj = -1.0 * vslam::jaccobian_dxy1deps(xyz);
+    }
+
+    void edge_xyz2xy1_sim3::computeError() {
+        const vertex_xyz* v0  = static_cast<const vertex_xyz*>(_vertices[0]);
+        const vertex_sim3* v1 = static_cast<const vertex_sim3*>(_vertices[1]);
+        _error = utils::project(_measurement) - utils::project(v1->estimate() * v0->estimate());
+    }
+
+    void edge_xyz2xy1_sim3::linearizeOplus() {
+        const vertex_xyz*  v0 = static_cast<const vertex_xyz*>(_vertices[0]);
+        const vertex_sim3* v1 = static_cast<const vertex_sim3*>(_vertices[1]);
+        Eigen::Vector3d xyz = v1->estimate() * v0->estimate();
+        _jacobianOplusXi = -1.0 * vslam::jaccobian_dxy1dxyz(xyz, v1->estimate().rxso3().matrix());
+        _jacobianOplusXj = -1.0 * vslam::jaccobian_dxy1dzet(xyz);
     }
 
     void edge_se3_to_se3::computeError() {
@@ -64,7 +83,7 @@ namespace vslam::backend {
 
     g2o_optimizer::g2o_optimizer(bool verbose, size_t n_trials) {
 
-        auto linear_solver = g2o::make_unique<g2o::LinearSolverCholmod<g2o::BlockSolver_6_3::PoseMatrixType>>();
+        auto linear_solver = g2o::make_unique<g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>>();
         auto block_solver  = g2o::make_unique<g2o::BlockSolver_6_3>(std::move(linear_solver));
         
         g2o::OptimizationAlgorithmLevenberg* algo = 

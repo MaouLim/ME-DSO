@@ -354,6 +354,8 @@ namespace icia {
             _optimizer.setVerbose(true);
             //_optimizer.setVerbose(false);
 
+            this->_compute_cache(ref, level);
+
             // create vertex, only one vertex
             icia::_vertex_pose_only* v = new icia::_vertex_pose_only();
             v->setId(0);

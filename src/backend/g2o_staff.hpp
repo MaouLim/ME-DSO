@@ -22,7 +22,15 @@ namespace vslam::backend {
     struct vertex_sim3 : 
         g2o::BaseVertex<7, Sophus::Sim3d> {
         
-        //TODO
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+        vertex_sim3() = default;
+
+        bool read(std::istream& is) override { return false; }
+        bool write(std::ostream& os) const override { return false; }
+
+        void setToOriginImpl() override { _estimate = Sophus::Sim3d(); }
+        void oplusImpl(const number_t* d) override;
     };
 
     struct vertex_xyz : 
@@ -61,16 +69,35 @@ namespace vslam::backend {
     };
 
     /**
-     * @brief error edge between pose nodes and landmark nodes
+     * @brief error edge between SE3 pose nodes and landmark nodes
      * @param measurement xy1 the unit plane coordinate to represent
      *                    map points on the frames
      */
-    struct edge_xyz2xy1 : 
+    struct edge_xyz2xy1_se3 : 
         g2o::BaseBinaryEdge<2, Eigen::Vector3d, vertex_xyz, vertex_se3> {
         
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-        edge_xyz2xy1() = default;
+        edge_xyz2xy1_se3() = default;
+
+        bool read(std::istream& is) override { return false; }
+        bool write(std::ostream& os) const override { return false; }
+
+        void computeError() override;
+        void linearizeOplus() override;
+    };
+
+    /**
+     * @brief error edge between Sim3 pose nodes and landmark nodes
+     * @param measurement xy1 the unit plane coordinate to represent
+     *                    map points on the frames
+     */
+    struct edge_xyz2xy1_sim3 : 
+        g2o::BaseBinaryEdge<2, Eigen::Vector3d, vertex_xyz, vertex_sim3> {
+
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+        edge_xyz2xy1_sim3() = default;
 
         bool read(std::istream& is) override { return false; }
         bool write(std::ostream& os) const override { return false; }
@@ -119,19 +146,7 @@ namespace vslam::backend {
         virtual void create_graph() { }
         virtual void update() { }
 
-        std::pair<double, double> optimize(size_t n_iterations) {
-            _optimizer.clear();
-
-            this->create_graph();
-
-            _optimizer.initializeOptimization();
-            _optimizer.computeActiveErrors();
-            double err_before = _optimizer.activeChi2();
-            _optimizer.optimize(n_iterations);
-            double err_after = _optimizer.activeChi2();
-
-            return std::make_pair(err_before, err_after);
-        }
+        std::pair<double, double> optimize(size_t n_iterations);
 
     protected:
         g2o::SparseOptimizer _optimizer; 

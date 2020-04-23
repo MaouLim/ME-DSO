@@ -35,6 +35,7 @@ add_library(vslam_utils SHARED
 )
 
 add_library(vslam SHARED
+    src/vars.cpp
     src/vo/depth_filter.cpp
     src/vo/feature.cpp
     src/vo/frame.cpp
@@ -73,5 +74,13 @@ target_link_libraries(SingleFrameEstTest ${OpenCV_LIBS} vslam)
 add_executable(CameraTest test/test_camera.cpp)
 target_link_libraries(CameraTest ${OpenCV_LIBS})
 
-add_executable(G2OStaffTest test/test_g2o_staff.cpp)
-target_link_libraries(G2OStaffTest ${PCL_LIBRARIES} vslam g2o_core g2o_stuff)
+add_executable(JaccobianTest test/test_jaccobian.cpp)
+target_link_libraries(JaccobianTest ${OpenCV_LIBS})
+
+add_executable(G2OStaffSE3Test test/test_g2o_staff_se3.cpp)
+target_link_libraries(G2OStaffSE3Test ${PCL_LIBRARIES} vslam g2o_core g2o_stuff)
+
+add_executable(SophusTest test/test_sophus.cpp)
+
+add_executable(InitializerTest test/test_initializer.cpp)
+target_link_libraries(InitializerTest g2o_core g2o_stuff ${OpenCV_LIBS} vslam)

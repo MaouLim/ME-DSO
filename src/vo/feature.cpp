@@ -19,19 +19,6 @@ namespace vslam {
         xy1 = host_frame.lock()->camera->pixel2cam(uv, 1.0);
     }
 
-    feature::feature(
-        const frame_ptr&       _host_f, 
-        const map_point_ptr&   _mp_desc,
-        const Eigen::Vector2d& _uv, 
-        size_t                 _pyr_level
-    ) : type(CORNER), host_frame(_host_f), map_point_describing(nullptr), 
-        uv(_uv), grad_orien(1., 0.), level(_pyr_level), good(false), e(nullptr)
-    {
-        assert(!host_frame.expired());
-        assert(set_describing(_mp_desc));
-        xy1 = host_frame.lock()->camera->pixel2cam(uv, 1.0);
-    }
-
     bool feature::set_describing(const map_point_ptr& mp) {
         if (!mp || map_point::REMOVED == mp->type) { return false; }
         if (map_point_describing) { return false; }
@@ -75,15 +62,15 @@ namespace vslam {
         return true;
     }
 
-    backend::edge_xyz2xy1* feature::create_g2o(
+    backend::edge_xyz2xy1_se3* feature::create_g2o(
         int                  eid, 
         backend::vertex_xyz* v0, 
         backend::vertex_se3* v1, 
-        double               weight = 1.0,
-        bool                 robust = true
+        double               weight,
+        bool                 robust
     ) {
         if (e) { return e; }
-        e = new backend::edge_xyz2xy1();
+        e = new backend::edge_xyz2xy1_se3();
         e->setVertex(0, v0);
         e->setVertex(1, v1);
         e->setMeasurement(xy1);

@@ -7,13 +7,7 @@ namespace vslam {
 
     struct initializer {
 
-        static const int    min_ref_features;
-        static const int    min_features_to_tracked;
-        static const double min_init_shift;
-        static const int    min_inliers;
-        static const double map_scale;
-        static const double viewport_border;
-        static const double max_reprojection_err;
+        static constexpr double border = 1.0;
 
         enum op_result { 
             FEATURES_NOT_ENOUGH, 

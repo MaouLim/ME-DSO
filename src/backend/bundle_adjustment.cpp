@@ -62,8 +62,7 @@ namespace vslam::backend {
 
     void local_map_ba::create_graph() {
         int v_seq = 0;
-
-        _feats.clear(); _mps.clear();
+        _clear_cache();
 
         for (auto& kf : _core_kfs) {
             auto v = kf->create_g2o(v_seq++);
@@ -84,7 +83,7 @@ namespace vslam::backend {
                         if (!ob_frame->v) {
                             auto v_f = ob_frame->create_g2o(v_seq++, true);
                             _optimizer.addVertex(v_f);
-                            _covisibles.push_back(ob_frame);
+                            _covisibles.emplace_back(ob_frame);
                         }
 
                         // create edges
@@ -108,8 +107,7 @@ namespace vslam::backend {
 
     void global_map_ba::create_graph() {
         int v_seq = 0;
-
-        _feats.clear(); _mps.clear();
+        _clear_cache();
 
         for (auto& kf : _map->key_frames()) {
             auto v_kf = kf->create_g2o(v_seq++);
@@ -125,12 +123,13 @@ namespace vslam::backend {
                     _mps.emplace_back(mp);
                 }
 
-                // TODO calculate reproject error
-                // double err = utils::reproject_err(kf->t_cw * mp->position, feat->xy1, 0.5);
-                // if (_reproj_thresh < err) { continue; }
-                auto e = feat->create_g2o(_feats.size(), mp->v, v_kf);
+                // calculate reproject error, add it into bad features if the error is large
+                double err = utils::reproject_err(kf->t_cw * mp->position, feat->xy1, 0.5);
+                if (_reproj_thresh < err) { _feats_bad.emplace_back(feat); continue; }
+                
+                auto e = feat->create_g2o(_feats_opt.size(), mp->v, v_kf);
                 _optimizer.addEdge(e);
-                _feats.emplace_back(feat);
+                _feats_opt.emplace_back(feat);
             }
         }
     }
@@ -139,7 +138,14 @@ namespace vslam::backend {
         for (auto& kf : _map->key_frames()) { kf->update_from_g2o(); }
         for (auto& mp : _mps) { mp->update_from_g2o(); }
 
-        const double _reproj_thresh2 = _reproj_thresh * _reproj_thresh;
-        for (auto& feat : _feats) { feat->update_from_g2o(_reproj_thresh2); }
+        for (auto& feat : _feats_bad) { 
+            if (feat->map_point_describing->n_obs < 2) {
+                feat->remove_describing();
+            }
+            else { feat->reset_describing(true); }
+        }
+
+        const double reproj_thresh2 = _reproj_thresh * _reproj_thresh;
+        for (auto& feat : _feats_opt) { feat->update_from_g2o(reproj_thresh2); }
     }
 }

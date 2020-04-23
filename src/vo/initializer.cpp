@@ -11,28 +11,13 @@
 
 namespace vslam {
 
-    const int initializer::min_ref_features = 200;
-        //utils::config::get<int>("min_ref_features");
-    const int initializer::min_features_to_tracked = 100;
-        //utils::config::get<int>("min_features_to_tracked");   
-    const double initializer::min_init_shift = 0.5;
-        //utils::config::get<double>("min_init_shift");
-    const int initializer::min_inliers = 80;
-        //utils::config::get<int>("min_inliers");
-    const double initializer::map_scale = 1.0;
-        //utils::config::get<double>("map_scale");
-    const double initializer::viewport_border = 1.0; 
-        //utils::config::get<double>("viewport_border");
-    const double initializer::max_reprojection_err = 0.2; 
-        //utils::config::get<double>("max_reprojection_err");
-
     initializer::op_result 
     initializer::set_first(const frame_ptr& first) 
     {
         reset();
         size_t n_detected = _detect_features(first);
 
-        if (n_detected < min_ref_features) {
+        if (n_detected < config::min_features_in_first) {
 #ifdef _ME_VSLAM_DEBUG_INFO_
             std::cerr << "Failed to init, too few keypoints: " 
                       << n_detected << std::endl;
@@ -56,22 +41,22 @@ namespace vslam {
         const frame_ptr& cur = frame;
         size_t n_tracked = _track_lk(cur);
 
-        if (n_tracked < min_features_to_tracked) {
+        if (n_tracked < config::min_features_to_tracked) {
             return FEATURES_NOT_ENOUGH;
         }
 
         double median_len = *utils::median(_flow_lens.begin(), _flow_lens.end());
-        if (median_len < min_init_shift) {
+        if (median_len < config::min_init_shift) {
             return SHIFT_NOT_ENOUGH;
         }
 
-        if (!_calc_homography(cur->camera->err_mul2(), max_reprojection_err)) { 
+        if (!_calc_homography(cur->camera->err_mul2(), config::max_reproj_err)) { 
 #ifdef _ME_VSLAM_DEBUG_INFO_
             std::cout << "Failed to compute pose from homography matrix." << std::endl;
 #endif      
             return FAILED_CALC_HOMOGRAPHY;
         }
-        double total_err = _compute_inliers_and_triangulate(max_reprojection_err);
+        double total_err = _compute_inliers_and_triangulate(config::max_reproj_err);
         size_t n_inliers = _inliers.size();
 
 #ifdef _ME_VSLAM_DEBUG_INFO_
@@ -88,7 +73,7 @@ namespace vslam {
          *     return INLIERS_NOT_ENOUGH;
          * }
          */ 
-        if (n_inliers < min_inliers) {
+        if (n_inliers < config::min_inliers) {
             return INLIERS_NOT_ENOUGH;
         }
 
@@ -99,7 +84,7 @@ namespace vslam {
         }
 
         double median_depth = *utils::median(depths.begin(), depths.end());
-        double scale = map_scale / median_depth;
+        double scale = config::init_scale / median_depth;
         
         /**
          * R1 = R * R0
@@ -117,18 +102,18 @@ namespace vslam {
             auto uv_ref = utils::eigen_vec(_uvs_ref[inlier_idx]);
             auto uv_cur = utils::eigen_vec(_uvs_cur[inlier_idx]);
 
-            if (ref->visible(uv_ref, viewport_border) && 
-                cur->visible(uv_cur, viewport_border)) 
+            if (ref->visible(uv_ref, border) && 
+                cur->visible(uv_cur, border)) 
             {
                 map_point_ptr mp = 
                     utils::mk_vptr<map_point>(cur->t_wc * _xyzs_cur[inlier_idx] * scale);
-
                 feature_ptr feat_ref = 
-                    utils::mk_vptr<feature>(ref, mp, uv_ref, 0);
+                    utils::mk_vptr<feature>(ref, uv_ref, 0);
                 feature_ptr feat_cur = 
-                    utils::mk_vptr<feature>(cur, mp, uv_cur, 0);
-                feat_ref->use();
-                feat_cur->use();
+                    utils::mk_vptr<feature>(cur, uv_cur, 0);
+
+                feat_ref->set_describing(mp); feat_ref->use();
+                feat_cur->set_describing(mp); feat_cur->use();
             }
         }
         return SUCCESS;
@@ -151,13 +136,9 @@ namespace vslam {
         const int h = target->camera->height;
         const int w = target->camera->width;
 
-        const size_t pyr_levels       = frame::pyr_levels;
-        const int    cell_sz          = 10;//utils::config::get<int>("cell_sz");
-        const double min_corner_score = 0.1;//utils::config::get<double>("min_corner_score");
-
         feature_set new_features;
-        fast_detector detector(h, w, cell_sz, pyr_levels);
-        detector.detect(target, min_corner_score, new_features);
+        fast_detector detector(h, w, config::cell_sz, config::pyr_levels);
+        detector.detect(target, config::min_corner_score, new_features);
 
         _uvs_ref.clear(); _xy1s_ref.clear();
         for (auto& each : new_features) {
@@ -194,20 +175,15 @@ namespace vslam {
     }
 
     size_t initializer::_track_lk(const frame_ptr& cur) {
-
         /**
          * OpenCV LK optical flow algorithm
          */ 
-
-        // parameters
-        const int    lk_win_sz         = 30;//utils::config::get<int>("lk_win_sz");
-        const size_t lk_max_iterations = 10;//utils::config::get<int>("lk_max_iterations");
-        const double lk_eps            = 1e-8;//utils::config::get<double>("lk_eps");
-        const size_t max_pyramid       = frame::pyr_levels;
-
         std::vector<uchar> status;
         std::vector<float> error;
-        cv::TermCriteria criteria(cv::TermCriteria::COUNT | cv::TermCriteria::EPS, lk_max_iterations, lk_eps);
+        cv::TermCriteria criteria(
+            cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 
+            config::max_opt_iterations, CONST_EPS
+        );
 
         // copy _uvs_ref to _uvs_cur as the initial estimation
         _uvs_cur.resize(_uvs_ref.size());
@@ -215,7 +191,8 @@ namespace vslam {
 
         cv::calcOpticalFlowPyrLK(
             ref->image(), cur->image(), _uvs_ref, _uvs_cur, status, error, 
-            cv::Size2i(lk_win_sz, lk_win_sz), max_pyramid, criteria, cv::OPTFLOW_USE_INITIAL_FLOW
+            cv::Size2i(config::cv_lk_win_sz, config::cv_lk_win_sz), 
+            config::pyr_levels, criteria, cv::OPTFLOW_USE_INITIAL_FLOW
         );
 
         size_t n_tracked = _rerange(status);
@@ -241,19 +218,6 @@ namespace vslam {
     bool initializer::_calc_homography(
         double err_mul2, double reproject_threshold
     ) {
-        //assert(_xy1s_ref.size() == _xy1s_cur.size());
-        // remove the 1 (3rd-dimession xy1) seems to be useless
-        // std::vector<Eigen::Vector2d> xys_ref; 
-        // std::vector<Eigen::Vector2d> xys_cur;
-        // xys_ref.reserve(xy1s_ref.size());
-        // xys_cur.reserve(xy1s_cur.size());
-        // size_t count_pts = 0;
-        // for (size_t i = 0; i < status.size(); ++i) {
-        //     if (!status[i]) { continue; }
-        //     xys_ref.emplace_back(xy1s_ref[i].x(), xy1s_ref[i].y());
-        //     xys_cur.emplace_back(xy1s_cur[i].x(), xy1s_cur[i].y());
-        //     ++count_pts;
-        // }
         homography solver(reproject_threshold, err_mul2, _xy1s_ref, _xy1s_cur);
         return solver.calc_pose_from_matches(t_cr);
     }

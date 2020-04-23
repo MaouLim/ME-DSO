@@ -31,8 +31,8 @@ namespace vslam {
 
         frame_ptr _create_frame(const cv::Mat& raw_img, double timestamp);
         void _df_callback(const map_point_ptr& new_mp, double cov2) { }
-        bool _need_new_kf() { return false; }
-        void _reduce_map() { }
+        bool _need_new_kf();
+        void _reduce_map();
 
         state_t             _state;
 

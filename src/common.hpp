@@ -52,8 +52,8 @@
 #include <g2o/core/robust_kernel_impl.h>
 #include <g2o/solvers/dense/linear_solver_dense.h>
 #include <g2o/solvers/eigen/linear_solver_eigen.h>
-#include <g2o/solvers/cholmod/linear_solver_cholmod.h>
-#include <g2o/solvers/csparse/linear_solver_csparse.h>
+//#include <g2o/solvers/cholmod/linear_solver_cholmod.h>
+//#include <g2o/solvers/csparse/linear_solver_csparse.h>
 
 /**
  * @cpp_headers vslam utils
@@ -68,8 +68,18 @@ namespace Eigen {
 
     using Matrix23d = Eigen::Matrix<double, 2, 3>;
     using Matrix32d = Eigen::Matrix<double, 3, 2>;
+
     using Matrix26d = Eigen::Matrix<double, 2, 6>;
     using Matrix62d = Eigen::Matrix<double, 6, 2>;
+
+    using Matrix27d = Eigen::Matrix<double, 2, 7>;
+    using Matrix72d = Eigen::Matrix<double, 7, 2>;
+
+    using Matrix36d = Eigen::Matrix<double, 3, 6>;
+    using Matrix63d = Eigen::Matrix<double, 6, 3>;
+
+    using Matrix37d = Eigen::Matrix<double, 3, 7>;
+    using Matrix73d = Eigen::Matrix<double, 7, 3>;
 }
 
 namespace vslam {
@@ -178,10 +188,34 @@ namespace vslam::backend {
     struct vertex_sim3;
     struct vertex_xyz;
     struct edge_xyz2uv;
-    struct edge_xyz2xy1;
+    struct edge_xyz2xy1_se3;
     struct edge_se3_to_se3;
 
     struct g2o_optimizer;
+}
+
+namespace config {
+
+    extern const int    height;
+    extern const int    width;
+    extern const double fx, fy, cx, cy;
+    extern const double k1, k2, k3;
+
+    extern const int    pyr_levels;             
+    extern const int    cell_sz;      
+    extern const int    max_opt_iterations; 
+
+    extern const double max_reproj_err;         
+
+    extern const int    min_features_in_first;
+    extern const int    min_features_to_tracked;
+    extern const double min_init_shift;
+    extern const int    min_inliers;
+    extern const int    cv_lk_win_sz;
+    extern const double init_scale;
+
+    extern const double min_corner_score;       
+
 }
 
 #endif

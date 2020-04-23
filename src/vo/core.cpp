@@ -159,4 +159,10 @@ namespace vslam {
         return utils::mk_vptr<frame>(_camera, raw_img, timestamp);
     }
 
+    bool system::_need_new_kf() {
+        
+    }
+
+    void system::_reduce_map() { }
+
 } // namespace vslam

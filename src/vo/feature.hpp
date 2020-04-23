@@ -13,18 +13,18 @@ namespace vslam {
 
         enum type_t { CORNER, EDGELET };
 
-        type_t                    type;
-        frame_wptr                host_frame;           // in which frame this feature detected 
-        map_point_ptr             map_point_describing; // map point which described by this feature
-        Eigen::Vector2d           uv;                   // pixel vector at level 0
-        Eigen::Vector3d           xy1;                  // uint-bearing vector
-        Eigen::Vector2d           grad_orien;           // the orientation of the graditude at this pixel
-        size_t                    level;                // level of pyramid
-        bool                      good;
-        backend::edge_xyz2xy1*    e;
+        type_t                      type;
+        frame_wptr                  host_frame;           // in which frame this feature detected 
+        map_point_ptr               map_point_describing; // map point which described by this feature
+        Eigen::Vector2d             uv;                   // pixel vector at level 0
+        Eigen::Vector3d             xy1;                  // uint-bearing vector
+        Eigen::Vector2d             grad_orien;           // the orientation of the graditude at this pixel
+        size_t                      level;                // level of pyramid
+        bool                        good;                 // whether seleted as a good feature
+
+        backend::edge_xyz2xy1_se3*  e;
 
         feature(const frame_ptr& _host, const Eigen::Vector2d& _uv, size_t _pyr_level);
-        feature(const frame_ptr& _host_f, const map_point_ptr& _mp_desc, const Eigen::Vector2d& _uv, size_t _pyr_level);
 
         /**
          * @brief whether the feature describes a map point
@@ -76,7 +76,7 @@ namespace vslam {
         /**
          * @brief g2o staff
          */ 
-        backend::edge_xyz2xy1* create_g2o(
+        backend::edge_xyz2xy1_se3* create_g2o(
             int                  eid, 
             backend::vertex_xyz* v0, 
             backend::vertex_se3* v1, 

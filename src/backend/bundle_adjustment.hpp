@@ -14,10 +14,13 @@ namespace vslam::backend {
         void create_graph() override;
         void update() override;
 
+        void set_f0(const frame_ptr& f0) { _frame0 = f0; }
+        void set_f1(const frame_ptr& f1) { _frame1 = f1; }
+
     private:
-        frame_ptr                _frame0;
-        frame_ptr                _frame1;
-        double                   _reproj_thresh2;
+        frame_ptr _frame0;
+        frame_ptr _frame1;
+        double    _reproj_thresh2;
         
         /**
          *@field caches 
@@ -27,10 +30,13 @@ namespace vslam::backend {
 
     struct local_map_ba : g2o_optimizer {
 
-        local_map_ba();
+        local_map_ba(std::set<frame_ptr>& core_kfs, double reproj_thresh) : 
+            _core_kfs(core_kfs), _reproj_thresh2(reproj_thresh * reproj_thresh) { }
 
         void create_graph() override;
         void update() override;
+
+        void set_core_kfs(std::set<frame_ptr>& core_kfs) { _core_kfs = core_kfs; }
 
     private:
         std::set<frame_ptr>& _core_kfs;
@@ -40,11 +46,21 @@ namespace vslam::backend {
          *@field caches 
          */
         std::vector<map_point_ptr> _mps;
-        std::list<frame_ptr>       _covisibles;
+        std::vector<frame_ptr>     _covisibles;
         std::vector<feature_ptr>   _feats;
+
+        void _clear_cache() {
+            _mps.clear(); _covisibles.clear(); _feats.clear();
+        }
     };
 
     struct global_map_ba : g2o_optimizer {
+
+        global_map_ba(const map_ptr& m, double reproj_thresh) : 
+            _map(m), _reproj_thresh(reproj_thresh) 
+        { 
+            assert(_map);
+        }
 
         void create_graph() override;
         void update() override;
@@ -57,7 +73,12 @@ namespace vslam::backend {
          *@field caches 
          */
         std::vector<map_point_ptr> _mps;
-        std::vector<feature_ptr>   _feats;
+        std::vector<feature_ptr>   _feats_bad;
+        std::vector<feature_ptr>   _feats_opt;
+
+        void _clear_cache() {
+            _mps.clear(); _feats_bad.clear(); _feats_opt.clear();
+        }
     };
     
 } // namespace backend
