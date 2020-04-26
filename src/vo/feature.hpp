@@ -107,7 +107,7 @@ namespace vslam {
         abstract_detector(int _h, int _w, int _cell_sz, size_t _n_levels);
         virtual ~abstract_detector() = default;
 
-        virtual void detect(frame_ptr host, double threshold, feature_set& features) = 0;
+        virtual size_t detect(frame_ptr host, double threshold, feature_set& features) = 0;
 
         void set_grid_occupied(const Eigen::Vector2d& uv);
         void set_grid_occupied(const feature_set& features);
@@ -159,7 +159,7 @@ namespace vslam {
         fast_detector(int _h, int _w, int _cell_sz, size_t _n_levels);
         virtual ~fast_detector() = default;
 
-        void detect(frame_ptr host, double threshold, feature_set& features) override;
+        size_t detect(frame_ptr host, double threshold, feature_set& features) override;
     };
 
     inline fast_detector::fast_detector(int _h, int _w, int _cell_sz, size_t _n_levels) : 

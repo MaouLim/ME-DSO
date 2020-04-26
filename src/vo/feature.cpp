@@ -95,7 +95,7 @@ namespace vslam {
         return true;
     }
 
-    void fast_detector::detect(
+    size_t fast_detector::detect(
         frame_ptr host, double threshold, feature_set& features
     ) {
         const auto& pyramid  = host->pyramid;
@@ -146,11 +146,13 @@ namespace vslam {
             }
         }
         
+        size_t count = 0;
         for (auto& each : corners) {
             if (each.score <= threshold) { continue; }
             features.emplace_front(new feature(host, Eigen::Vector2d(each.x, each.y) * (1 << each.level), each.level));
+            ++count;
         }
-        
         reset();
+        return count;
     }
 }

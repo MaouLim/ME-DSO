@@ -83,4 +83,7 @@ target_link_libraries(G2OStaffSE3Test ${PCL_LIBRARIES} vslam g2o_core g2o_stuff)
 add_executable(SophusTest test/test_sophus.cpp)
 
 add_executable(InitializerTest test/test_initializer.cpp)
-target_link_libraries(InitializerTest g2o_core g2o_stuff ${OpenCV_LIBS} vslam)
+target_link_libraries(InitializerTest g2o_core g2o_stuff ${PCL_LIBRARIES} ${OpenCV_LIBS} vslam)
+
+add_executable(InitializerV1Test test/test_initializer_v1.cpp)
+target_link_libraries(InitializerV1Test g2o_core g2o_stuff ${PCL_LIBRARIES} ${OpenCV_LIBS} vslam)

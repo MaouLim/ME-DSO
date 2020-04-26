@@ -8,6 +8,10 @@
 #include <vo/feature.hpp>
 #include <vo/map_point.hpp>
 
+#include <pcl/point_types.h>
+#include <pcl/pcl_base.h>
+#include <pcl/visualization/cloud_viewer.h>
+
 const std::string dataset_dir = "data/fr1_xyz/";
 const std::string association_file = dataset_dir + "rgb-gt.txt";
 const size_t      max_images = 500;
@@ -114,7 +118,7 @@ int main(int argc, char** argv) {
         utils::mk_vptr<vslam::frame>(cam, images.front().second, images.front().first);
     cv::imshow("ref", images.front().second);
 
-    std::cout << "set_first: " << init.set_first(first_frame) << std::endl;;
+    std::cout << "set_first: " << init.add_frame(first_frame) << std::endl;;
     vslam::frame_ptr f = nullptr;
 
     size_t i = 1;
@@ -307,47 +311,118 @@ int main(int argc, char** argv) {
 
     {
         vslam::initializer_v2 init;
-
-        for (auto i = 0; i < max_images; ++i) {
+        auto start = 80;
+        auto idx = start;
+        for (;idx < max_images; ++idx) {
             
-            //init.reset();
-
             vslam::frame_ptr f0 = 
-                utils::mk_vptr<vslam::frame>(cam, images[i].second, images[i].first);
+                utils::mk_vptr<vslam::frame>(cam, images[idx].second, images[idx].first);
 
             auto ret = init.add_frame(f0);
             std::cout << ret << std::endl;
-            if (ret == vslam::initializer_v2::SUCCESS) { break; }
-
-            // if (vslam::initializer::SUCCESS != init.set_first(f0)) { 
-            //     std::cout << "failed set first" << std::endl; 
-            //     continue; 
-            // }
-            // auto ret = init.add_frame(f1);
-            // if (vslam::initializer::SUCCESS != ret) { 
-            //     std::cout << "failed add_frame: " << ret << std::endl; 
-            //     continue; 
-            // }
-
-            // std::cout << f1->t_cw.matrix3x4() << std::endl;
-
-		    // auto t_cam2world = gts[0] * gts[i].inverse(); //f1->t_wc;
-		    // auto r = t_cam2world.rotationMatrix();
-		    // auto t = t_cam2world.translation();
-
-		    // cv::Affine3d::Mat3 rot(
-		    // 	r(0, 0), r(0, 1), r(0, 2),
-		    // 	r(1, 0), r(1, 1), r(1, 2),
-		    // 	r(2, 0), r(2, 1), r(2, 2)
-		    // );
-		    // cv::Affine3d::Vec3 trans(t[0], t[1], t[2]);
-		    // cv::Affine3d transform(rot, trans);
-
-		    // cv::imshow("color", f1->pyramid[0]);
-		    // cv::waitKey(100);
-		    // visualizer.setWidgetPose("camera", transform);
-		    // visualizer.spinOnce(1);
+            if (ret == vslam::initializer_v2::SUCCESS) {  break; }
 	    }
+#define _TEST_PCL_ 1
+#ifdef _TEST_PCL_
+        const auto& pts = init.final_xyzs_f1;
+        const auto& uvs = init.final_uvs_f1;
+
+
+        typedef pcl::PointXYZRGB                point_t;
+        typedef pcl::PointCloud<point_t>        point_cloud_t;
+        typedef pcl::visualization::CloudViewer viewer_t;
+
+        point_cloud_t::Ptr cloud(new point_cloud_t());
+        for (auto v : pts) {
+            point_t p_xyzrgb;
+            p_xyzrgb.x = v[0];
+            p_xyzrgb.y = v[1];
+            p_xyzrgb.z = v[2];
+
+            p_xyzrgb.r = 255;
+            p_xyzrgb.g = 0;
+            p_xyzrgb.b = 0;
+
+            cloud->push_back(p_xyzrgb);
+        }
+
+        cv::Mat depth = find_associate_depth(init._frames[1]->timestamp);
+        assert(depth.data);
+        for (auto uv : uvs) {
+            uint16_t d = depth.at<uint16_t>(uv.y(), uv.x());
+            if (d <= 0) { continue; }
+            double z = double(d) / 5000.0;
+            Eigen::Vector3d xyz = cam->pixel2cam(uv, z);
+
+            point_t p_xyzrgb;
+            p_xyzrgb.x = xyz[0];
+            p_xyzrgb.y = xyz[1];
+            p_xyzrgb.z = xyz[2];
+
+            p_xyzrgb.r = 255;
+            p_xyzrgb.g = 255;
+            p_xyzrgb.b = 255;
+            cloud->push_back(p_xyzrgb);
+        }
+
+        viewer_t viewer("pts");
+        viewer.showCloud(cloud);
+        while (!viewer.wasStopped()) { }
+#endif
+
+#ifdef _TEST_CV_VIZ_
+        cv::viz::Viz3d visualizer("VO");
+	    cv::viz::WCoordinateSystem world_sys(1.0), camera_sys(0.2), gt_cam_sys(0.4);
+	    cv::Vec3d camera_pos(0., -1., -1.), camera_center(0., 0., 0.), camera_yaxis(0., 1., 0.);
+	    cv::Affine3d cam_pose = cv::viz::makeCameraPose(camera_pos, camera_center, camera_yaxis);
+        cv::Affine3d gt_cam_pose = cv::viz::makeCameraPose(camera_pos, camera_center, camera_yaxis);
+	    visualizer.setViewerPose(cam_pose);
+        visualizer.setViewerPose(gt_cam_pose);
+
+	    //world_sys.setRenderingProperty(cv::viz::LINE_WIDTH, 1.);
+	    camera_sys.setRenderingProperty(cv::viz::LINE_WIDTH, 1.);
+        gt_cam_sys.setRenderingProperty(cv::viz::LINE_WIDTH, 2.);
+	    //visualizer.showWidget("world", world_sys);
+	    visualizer.showWidget("camera", camera_sys);
+        visualizer.showWidget("gt", gt_cam_sys);
+
+        int step = (idx - start) /  vslam::initializer_v2::min_init_frames;
+
+        for (size_t i = 0, j = 0; i < vslam::initializer_v2::min_init_frames; ++i, j += step) {
+            {
+                auto t_cam2world = init._poses_opt[i].inverse();//f1->t_wc;
+		        auto r = t_cam2world.rotationMatrix();
+		        auto t = t_cam2world.translation() * 2.0;
+
+		        cv::Affine3d::Mat3 rot(
+		        	r(0, 0), r(0, 1), r(0, 2),
+		        	r(1, 0), r(1, 1), r(1, 2),
+		        	r(2, 0), r(2, 1), r(2, 2)
+		        );
+		        cv::Affine3d::Vec3 trans(t[0], t[1], t[2]);
+		        cv::Affine3d transform(rot, trans);
+		        visualizer.setWidgetPose("camera", transform);
+            }
+            {
+                auto t_cam2world = gts[start] * gts[start + j].inverse();
+		        auto r = t_cam2world.rotationMatrix();
+		        auto t = t_cam2world.translation();
+
+		        cv::Affine3d::Mat3 rot(
+		        	r(0, 0), r(0, 1), r(0, 2),
+		        	r(1, 0), r(1, 1), r(1, 2),
+		        	r(2, 0), r(2, 1), r(2, 2)
+		        );
+		        cv::Affine3d::Vec3 trans(t[0], t[1], t[2]);
+		        cv::Affine3d transform(rot, trans);
+		        visualizer.setWidgetPose("gt", transform);
+            }
+
+            cv::imshow("color", init._frames[i]->pyramid[0]);
+		    cv::waitKey();
+		    visualizer.spinOnce(1);
+        }
+#endif
     }
 
     return 0;

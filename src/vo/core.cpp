@@ -61,14 +61,12 @@ namespace vslam {
 
     bool system::track_init_stage(const frame_ptr& new_frame) {
         auto ret = _initializer->add_frame(new_frame);
-        if (initializer::NO_REF_FRAME == ret) {
-            ret = _initializer->set_first(new_frame);
-            if (initializer::SUCCESS == ret) {
-                new_frame->as_key_frame();
-                _map->add_key_frame(new_frame);
-            }
+        if (initializer::REF_FRAME_SET == ret) {
+            new_frame->as_key_frame();
+            _map->add_key_frame(new_frame);
+            return false;
         }
-        else if (initializer::SUCCESS == ret) {
+        if (initializer::SUCCESS == ret) {
             new_frame->as_key_frame();
             _map->add_key_frame(new_frame);
             _depth_filter->commit(new_frame);

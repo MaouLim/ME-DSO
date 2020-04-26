@@ -205,7 +205,8 @@ namespace config {
     extern const int    cell_sz;      
     extern const int    max_opt_iterations; 
 
-    extern const double max_reproj_err;         
+    extern const double max_reproj_err_uv;
+    extern const double max_reproj_err_xy1;         
 
     extern const int    min_features_in_first;
     extern const int    min_features_to_tracked;

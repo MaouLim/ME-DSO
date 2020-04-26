@@ -19,15 +19,16 @@ namespace config {
     const int    cell_sz                 = 10;
     const int    max_opt_iterations      = 10;
 
-    const double max_reproj_err          = 2.0 / (fx + fy);
+    const double max_reproj_err_uv       = 0.4;
+    const double max_reproj_err_xy1      = max_reproj_err_uv * 2. / (fx + fy);
 
-    const int    min_features_in_first   = 200;
-    const int    min_features_to_tracked = 150;
-    const double min_init_shift          = 10.0;
+    const int    min_features_in_first   = 400;
+    const int    min_features_to_tracked = 250;
+    const double min_init_shift          = 30.0;
     const int    min_inliers             = 100;
     const int    cv_lk_win_sz            = 21;
     const double init_scale              = 1.0;
  
-    const double min_corner_score        = 700.0;
+    const double min_corner_score        = 300.0;
     
 } // namespace config

@@ -7,28 +7,29 @@ namespace vslam {
 
     struct initializer {
 
-        static constexpr double border = 1.0;
+        static constexpr double border             = 1.0;
+        static constexpr size_t max_track_failures = 40;
 
         enum op_result { 
+            REF_FRAME_SET = -1,
+            SUCCESS       =  0,
             FEATURES_NOT_ENOUGH, 
-            NO_REF_FRAME, 
             SHIFT_NOT_ENOUGH, 
             FAILED_CALC_POSE,
-            INLIERS_NOT_ENOUGH,
-            SUCCESS 
+            INLIERS_NOT_ENOUGH
         };
 
         frame_ptr    ref;
         Sophus::SE3d t_cr; // from ref to cur frame
 
-        initializer() : ref(nullptr) { }
+        initializer() : ref(nullptr), _n_track_failures(0) { }
         ~initializer() = default;
 
-        op_result set_first(const frame_ptr& first);
         op_result add_frame(const frame_ptr& frame);
         void reset();
 
     private:
+        size_t _n_track_failures;
 
         std::vector<cv::Point2f>     _uvs_ref;
         std::vector<cv::Point2f>     _uvs_cur;
@@ -38,6 +39,11 @@ namespace vslam {
         std::vector<double>          _flow_lens;
         std::vector<int>             _inliers;
         std::vector<Eigen::Vector3d> _xyzs_cur;
+
+        /**
+         * @brief when fails to track a frame
+         */ 
+        void _handle_failure();
 
         /**
          * @return the number of the features detected
@@ -58,15 +64,20 @@ namespace vslam {
         /**
          * @return succeed to compute the pose from homography matrix 
          */ 
-        bool _calc_homography(double err_mul2, double reproject_threshold);
-        bool _calc_essential();
+        bool _calc_homography(double err_mul2, Sophus::SE3d& se3) const;
+        bool _calc_essential(Sophus::SE3d& se3) const;
 
         /**
          * @brief using the pose to triangulate, recover the position 
          *        of the 3d points (in world coord-sys)
-         * @return evalute the pose (sum of reprojection error)
+         * @param se3 the SE(3) transformation from ref to cur
+         * @return evalute the pose (mean reprojection error on ref and cur frames of all the inliers)
          */ 
-        double _compute_inliers_and_triangulate(double reproject_threshold);
+        double _compute_inliers_and_triangulate(
+            const Sophus::SE3d&           se3, 
+            std::vector<Eigen::Vector3d>& xyzs_cur, 
+            std::vector<int>&             inlier_indices
+        ) const;
     };
 
     struct initializer_v2 {
@@ -81,24 +92,21 @@ namespace vslam {
             SUCCESS 
         };
 
-        static constexpr int n_init_frames_require = 10;
+        static constexpr int min_init_frames = 10;
+        static constexpr int max_trials      = 10;
 
-        initializer_v2() { 
-            _frames.reserve(n_init_frames_require);
-            _track_table.reserve(n_init_frames_require);
-            _n_feats_tracked.reserve(n_init_frames_require);
-        }
+        std::vector<Sophus::SE3d> _poses_opt;
+        Sophus::SE3d t_10, t_21;
+        std::vector<Eigen::Vector3d> final_xyzs_f1;
+        std::vector<Eigen::Vector2d> final_uvs_f1;
+
+        initializer_v2();
+        ~initializer_v2() = default;
 
         void reset();
         op_result add_frame(const frame_ptr& frame);
 
     private:
-        void _calc_optcal_flow(
-            const cv::Mat&            img, 
-            std::vector<uchar>&       status, 
-            std::vector<cv::Point2f>& uvs
-        );
-
         void _shrink(
             const std::vector<uchar>&       status, 
             const std::vector<cv::Point2f>& uvs,
@@ -111,30 +119,68 @@ namespace vslam {
             std::vector<cv::Point2f>& uvs
         );
 
-        bool _calc_homography(
-            double err_mul2, double reproject_threshold, Sophus::SE3d& t_cr
+        void _reverve_cache(double n_init_feats);
+
+        void _calc_optcal_flow(
+            const cv::Mat&            img_last,
+            const cv::Mat&            img_cur, 
+            const std::vector<uchar>& status_last,
+            std::vector<uchar>&       status, 
+            std::vector<cv::Point2f>& uvs
         );
 
-        double _compute_inliers_and_triangulate(
-            double reproject_threshold, const Sophus::SE3d& t_10
+        bool _calc_homography(
+            const std::vector<Eigen::Vector3d>& xy1s_ref,
+            const std::vector<Eigen::Vector3d>& xy1s_cur,
+            double                              err_mul2, 
+            double                              reproject_threshold, 
+            Sophus::SE3d&                       t_cr
+        ) const;
+
+        double _triangulate_frame01(
+            double                        reproj_threshold,  
+            const Sophus::SE3d&           t_10, 
+            std::vector<uchar>&           inliers_f1,
+            std::vector<Eigen::Vector3d>& xyzs_f1
+        ) const;
+
+        void _pose_only_optimize(
+            const camera_ptr& cam, const std::vector<Sophus::SE3d>& poses
         );
-    
-        std::vector<
-            std::pair<std::vector<uchar>, std::vector<cv::Point2f>>
-        >                      _track_table;
-        std::vector<size_t>    _n_feats_tracked;
-        std::vector<frame_ptr> _frames;
+
+        double _triangulate_frame012(
+            const Sophus::SE3d& t_10, 
+            const Sophus::SE3d& t_21, 
+            std::vector<uchar>& status
+        ) { }
+//private:
+    public:
+        using track_record = 
+            std::pair<std::vector<uchar>, std::vector<cv::Point2f>>;
+
+        std::vector<track_record> _track_table;
+        size_t                    _n_init_feats;
+        size_t                    _n_final_feats;
+        size_t                    _count_failures;
+        std::vector<frame_ptr>    _frames;
+
+        detector_ptr _det;
+
+        std::vector<Eigen::Vector3d> _xyzs_f1;
 
         /**
          * @field caches
          */ 
-        std::vector<double>          _shift_cache;
-        std::vector<cv::Point2f>     _uvs_cache;
+        std::vector<double>          _shift_cache; 
+        std::vector<cv::Point2f>     _uvs_cache;   
         std::vector<Eigen::Vector3d> _xy1s_ref;
         std::vector<Eigen::Vector3d> _xy1s_cur;
 
-        std::vector<uchar>           _inliers_f1;
-        std::vector<Eigen::Vector3d> _xyzs_f1;
+        /**
+         * @field g2o staff
+         */ 
+        std::vector<backend::vertex_xyz*>  _vs_mp;
+        std::vector<backend::vertex_se3*>  _vs_f;
     };
 }
 
