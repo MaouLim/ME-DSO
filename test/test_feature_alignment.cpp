@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
 
     assert(img_ref.data && img_cur.data);
 
-    cv::Ptr<cv::GFTTDetector> det = cv::GFTTDetector::create(400);
+    cv::Ptr<cv::GFTTDetector> det = cv::GFTTDetector::create(1000, 0.01, 5);
     std::vector<cv::KeyPoint> kpts;
     det->detect(img_ref, kpts);
 

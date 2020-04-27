@@ -49,6 +49,7 @@ namespace vslam {
          * @return the number of the features detected
          */ 
         size_t _detect_features(const frame_ptr& target);
+        size_t _detect_features_v2(const frame_ptr& target);
 
         /**
          * @return the number of the features tracked

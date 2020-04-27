@@ -163,7 +163,8 @@ namespace vslam {
     };
 
     inline fast_detector::fast_detector(int _h, int _w, int _cell_sz, size_t _n_levels) : 
-        abstract_detector(_h, _w, _cell_sz, _n_levels) { }    
+        abstract_detector(_h, _w, _cell_sz, _n_levels) { }
+
 }
 
 #endif

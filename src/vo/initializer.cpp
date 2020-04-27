@@ -19,7 +19,8 @@ namespace vslam {
 #ifdef _ME_VSLAM_DEBUG_INFO_
             std::cout << "Reference frame not set, set as a first frame" << std::endl;
 #endif      
-            size_t n_detected = _detect_features(frame);
+            //size_t n_detected = _detect_features(frame);
+            size_t n_detected = _detect_features_v2(frame);
             if (n_detected < config::min_features_in_first) {
 #ifdef _ME_VSLAM_DEBUG_INFO_
                 std::cerr << "Failed to init, too few keypoints: " 
@@ -154,6 +155,8 @@ namespace vslam {
                 feat_cur->set_describing(mp); feat_cur->use();
             }
         }
+
+        reset();
         return SUCCESS;
     }
 
@@ -184,10 +187,29 @@ namespace vslam {
         fast_detector detector(h, w, config::cell_sz, config::pyr_levels);
         detector.detect(target, config::min_corner_score, new_features);
 
+
         _uvs_ref.clear(); _xy1s_ref.clear();
         for (auto& each : new_features) {
             _uvs_ref.emplace_back(each->uv[0], each->uv[1]);
             _xy1s_ref.emplace_back(each->xy1);
+        }
+        return _uvs_ref.size();
+    }
+
+    size_t initializer::_detect_features_v2(const frame_ptr& target) {
+
+        size_t max_feats = (config::width / config::cell_sz) * 
+                           (config::height / config::cell_sz);
+        cv::Ptr<cv::GFTTDetector> det = 
+            cv::GFTTDetector::create(max_feats, 0.01, config::cell_sz / 2.);
+        std::vector<cv::KeyPoint> kpts;
+        det->detect(target->image(), kpts);
+
+        _uvs_ref.clear(); _xy1s_ref.clear();
+        for (auto& each : kpts) {
+            _uvs_ref.emplace_back(each.pt);
+            Eigen::Vector2d uv = { each.pt.x, each.pt.y };
+            _xy1s_ref.emplace_back(target->camera->pixel2cam(uv));
         }
         return _uvs_ref.size();
     }
@@ -204,8 +226,8 @@ namespace vslam {
         while (j < n_features) {
             if (!status[j]) { ++j; }
             if (i != j) {
-                _uvs_ref[i] = _uvs_ref[j];
-                _uvs_cur[i] = _uvs_cur[j];
+                _uvs_ref[i]  = _uvs_ref[j];
+                _uvs_cur[i]  = _uvs_cur[j];
                 _xy1s_ref[i] = _xy1s_ref[j];
             }
             ++i; ++j;

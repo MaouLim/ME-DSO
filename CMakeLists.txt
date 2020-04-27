@@ -60,7 +60,7 @@ add_executable(UtilsTest test/test_utils.cpp)
 target_link_libraries(UtilsTest ${OpenCV_LIBS} vslam_utils)
 
 add_executable(MatcherTest test/test_matcher.cpp)
-target_link_libraries(MatcherTest ${OpenCV_LIBS} ${fast_LIBRARIES})
+target_link_libraries(MatcherTest g2o_core g2o_stuff ${OpenCV_LIBS} vslam)
 
 add_executable(FeatureTest test/test_feature.cpp)
 target_link_libraries(FeatureTest g2o_core g2o_stuff ${OpenCV_LIBS} vslam)

@@ -148,6 +148,8 @@ namespace vslam {
 
     /**
      * @brief a container stores the <map point, feature> pairs
+     * @note the features in the pair <map point, feature> still 
+     *       have not been added to their host frame
      */ 
     struct candidate_set {
         
