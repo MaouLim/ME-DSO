@@ -11,8 +11,6 @@
 
 #include <backend/g2o_staff.hpp>
 
-#define _ME_VSLAM_DEBUG_INFO_ 1
-
 namespace vslam {
 
     initializer::op_result 
@@ -61,7 +59,8 @@ namespace vslam {
             double mean_err = _compute_inliers_and_triangulate(t_e, xyzs_cur_e, inlier_indices_e);
             essential_score = double(essential_success) * 
                               double(inlier_indices_e.size()) / (mean_err + config::max_reproj_err_xy1);
-        }//essential_score = 0;
+        }
+        //essential_score = 0;
 
         /**
          * @note calculate homography
@@ -76,7 +75,8 @@ namespace vslam {
             double mean_err = _compute_inliers_and_triangulate(t_h, xyzs_cur_h, inlier_indices_h);
             homography_score = double(homography_success) * 
                                double(inlier_indices_h.size()) / (mean_err + config::max_reproj_err_xy1);
-        }//homography_score = 0;
+        }
+        //homography_score = 0;
 
         if (!essential_success && !homography_success) { 
 #ifdef _ME_VSLAM_DEBUG_INFO_
@@ -101,21 +101,14 @@ namespace vslam {
         }
         
         size_t n_inliers = _inliers.size();
-
+        double inliers_ratio = double(n_inliers) / _xy1s_ref.size();
 #ifdef _ME_VSLAM_DEBUG_INFO_
             std::cout << "Inliers: " << n_inliers << std::endl;
-            std::cout << "Ratio of inliers: " << double(n_inliers) / _xy1s_ref.size() << std::endl;
-#endif      
-        /**
-         * @todo minimun requirement of the number of the inliers 
-         *       minimun requirement of the ratio of the inliers
-         * 
-         * double inliers_ratio = double(n_inliers) / _xy1s_ref.size();
-         * if (inliers_ratio < min_inliers_ratio) {
-         *     return INLIERS_NOT_ENOUGH;
-         * }
-         */ 
-        if (n_inliers < config::min_inliers) {
+            std::cout << "Ratio of inliers: " << inliers_ratio << std::endl;
+#endif
+        if (inliers_ratio < config::min_inlier_ratio || 
+                n_inliers < config::min_inliers
+        ) {
             _handle_failure();
             return INLIERS_NOT_ENOUGH;
         }

@@ -87,3 +87,6 @@ target_link_libraries(InitializerTest g2o_core g2o_stuff ${PCL_LIBRARIES} ${Open
 
 add_executable(InitializerV1Test test/test_initializer_v1.cpp)
 target_link_libraries(InitializerV1Test g2o_core g2o_stuff ${PCL_LIBRARIES} ${OpenCV_LIBS} vslam)
+
+add_executable(FeatureAlignmentTest test/test_feature_alignment.cpp)
+target_link_libraries(FeatureAlignmentTest ${OpenCV_LIBS} vslam)

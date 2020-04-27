@@ -26,9 +26,16 @@ namespace config {
     const int    min_features_to_tracked = 250;
     const double min_init_shift          = 30.0;
     const int    min_inliers             = 100;
+    const double min_inlier_ratio        = 0.75;
     const int    cv_lk_win_sz            = 21;
     const double init_scale              = 1.0;
  
     const double min_corner_score        = 300.0;
+
+    const double max_epipolar_search_ssd    = 100.0; 
+    const int    max_epipolar_search_steps  = 50;
+    const double max_angle_between_epi_grad = M_PI / 4;
+    const double min_len_to_epipolar_search = 2.0;
+    const double epipolar_search_step       = CONST_COS_45;
     
 } // namespace config

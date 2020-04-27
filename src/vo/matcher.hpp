@@ -7,17 +7,11 @@ namespace vslam {
 
     struct patch_matcher {
         
-        static constexpr double min_len_to_epipolar_search = 2.0;
-        static constexpr double epipolar_search_step       = CONST_COS_45;
+        bool use_alignment_1d;
+        bool edgelet_filtering;
 
-        static const int    max_alignment_iterations;
-        static const bool   using_alignment_1d;
-        static const double max_epipolar_search_ssd;
-        static const size_t max_epipolar_search_steps;
-        static const bool   edgelet_filtering;
-        static const double max_angle_between_epi_grad;
-
-        patch_matcher() = default;
+        explicit patch_matcher(bool _use_align1d = false, bool _filter_edgelet = true) : 
+            use_alignment_1d(_use_align1d), edgelet_filtering(_filter_edgelet) { }
         ~patch_matcher() = default;
 
         /**
@@ -116,7 +110,7 @@ namespace vslam {
 
     struct alignment {
 
-        static constexpr double align_converge_thresh = CONST_EPS;
+        static constexpr double align_converge_thresh = 2e-3;
         
         /**
          * @brief using ICIA to align the feature along the indicted direction 

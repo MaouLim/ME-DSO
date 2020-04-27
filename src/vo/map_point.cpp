@@ -18,7 +18,7 @@ namespace vslam {
     map_point_seed::~map_point_seed() {
 #ifdef _ME_VSLAM_DEBUG_INFO_
         std::cout << "Map point seed: " << id 
-                  << " live time: "     << live_time 
+                  << " live time: "     << count_updates 
                   << std::endl;
 #endif
     }

@@ -212,11 +212,20 @@ namespace config {
     extern const int    min_features_to_tracked;
     extern const double min_init_shift;
     extern const int    min_inliers;
+    extern const double min_inlier_ratio;
     extern const int    cv_lk_win_sz;
     extern const double init_scale;
 
-    extern const double min_corner_score;       
+    extern const double min_corner_score;
+
+    extern const double max_epipolar_search_ssd;   
+    extern const int    max_epipolar_search_steps; 
+    extern const double max_angle_between_epi_grad;
+    extern const double min_len_to_epipolar_search;
+    extern const double epipolar_search_step;      
 
 }
+
+#define _ME_VSLAM_DEBUG_INFO_ 1
 
 #endif

@@ -10,13 +10,6 @@
 
 namespace vslam {
 
-    const int    patch_matcher::max_alignment_iterations   = 10;
-    const bool   patch_matcher::using_alignment_1d         = false;
-    const double patch_matcher::max_epipolar_search_ssd    = 100.0;
-    const size_t patch_matcher::max_epipolar_search_steps  = 50;
-    const bool   patch_matcher::edgelet_filtering          = true;
-    const double patch_matcher::max_angle_between_epi_grad = M_PI / 4.;
-
     bool patch_matcher::match_direct(
         const map_point_ptr&   mp, 
         const frame_ptr&       cur, 
@@ -41,7 +34,7 @@ namespace vslam {
             xyz_ref.z(), _check_sz, cur->t_cw * ref->t_wc
         );
 
-        size_t max_level = 4;//utils::config::get<int>("pyr_levels") - 1;
+        size_t max_level = config::pyr_levels - 1; assert(0 < config::pyr_levels);
         size_t search_level = affine::search_best_level(affine_cr, max_level);
         affine::extract_patch_affine(
             ref->pyramid[feat_ref->level], feat_ref->uv, feat_ref->level, 
@@ -56,7 +49,7 @@ namespace vslam {
                 (affine_cr * feat_ref->grad_orien).normalized();
             success = alignment::align1d(
                 cur->pyramid[search_level], grad_orien_cur, _patch, 
-                max_alignment_iterations, uv_leveln
+                config::max_opt_iterations, uv_leveln
             );
             if (success) {
                 candidate.reset(new feature(cur, uv_leveln * scale, search_level));
@@ -68,7 +61,7 @@ namespace vslam {
         else if (feature::CORNER == feat_ref->type) {
             success = alignment::align2d(
                 cur->pyramid[search_level], _patch, 
-                max_alignment_iterations, uv_leveln
+                config::max_opt_iterations, uv_leveln
             );
             if (success) {
                 candidate.reset(new feature(cur, uv_leveln * scale, search_level));
@@ -116,9 +109,9 @@ namespace vslam {
             Eigen::Vector2d grad_orien_cur = 
                 (affine_cr * feat_ref->grad_orien).normalized();
             double cos_angle = std::abs(grad_orien_cur.dot(epipolar_orien));
-            if (cos_angle < std::cos(max_angle_between_epi_grad)) { return false; }
+            if (cos_angle < std::cos(config::max_angle_between_epi_grad)) { return false; }
         }
-        size_t max_level = 4;//utils::config::get<int>("pyr_levels") - 1;
+        size_t max_level = config::pyr_levels - 1;
         size_t level_cur = affine::search_best_level(affine_cr, max_level);
 
         affine::extract_patch_affine(
@@ -128,20 +121,20 @@ namespace vslam {
 
         double scale = (1 << level_cur);
 
-        if (epipolar_pixel_len < min_len_to_epipolar_search) {
+        if (epipolar_pixel_len < config::min_len_to_epipolar_search) {
             Eigen::Vector2d uv_cur = (uv_min_cur + uv_max_cur) * 0.5;
             Eigen::Vector2d uv_leveln_cur = uv_cur / scale;
             bool success = false;
-            if (using_alignment_1d) {
+            if (use_alignment_1d) {
                 success = alignment::align1d(
                     cur->pyramid[level_cur], epipolar_pixel_plane.normalized(), 
-                    _patch, max_alignment_iterations, uv_leveln_cur
+                    _patch, config::max_opt_iterations, uv_leveln_cur
                 );
             }
             else {
                 success = alignment::align2d(
                     cur->pyramid[level_cur], _patch, 
-                    max_alignment_iterations, uv_leveln_cur
+                    config::max_opt_iterations, uv_leveln_cur
                 );
             }
             if (!success) { return false; }
@@ -153,9 +146,9 @@ namespace vslam {
             );
         }
 
-        size_t n_steps = epipolar_pixel_len / epipolar_search_step;
+        size_t n_steps = epipolar_pixel_len / config::epipolar_search_step;
         Eigen::Vector2d step = epipolar_unit_plane / n_steps;
-        if (max_epipolar_search_steps < n_steps) { return false; }
+        if (config::max_epipolar_search_steps < n_steps) { return false; }
 
         // epipolar search
         double best_ssd = std::numeric_limits<double>::max();
@@ -195,22 +188,22 @@ namespace vslam {
         }
 
         // the difference is too large
-        if (max_epipolar_search_ssd < best_ssd) { return false; }
+        if (config::max_epipolar_search_ssd < best_ssd) { return false; }
 
         // subpixel refinement
         Eigen::Vector2d best_uv = cur->camera->cam2pixel(utils::homogenize(best_xy));
         Eigen::Vector2d best_uv_leveln = best_uv / scale;
         bool success = false;
-        if (using_alignment_1d) {
+        if (use_alignment_1d) {
             success = alignment::align1d(
                 cur->pyramid[level_cur], epipolar_pixel_plane.normalized(), 
-                _patch, max_alignment_iterations, best_uv_leveln
+                _patch, config::max_opt_iterations, best_uv_leveln
             );
         }
         else {
             success = alignment::align2d(
                 cur->pyramid[level_cur], _patch, 
-                max_alignment_iterations, best_uv_leveln
+                config::max_opt_iterations, best_uv_leveln
             );
         }
         if (!success) { return false; }
@@ -323,30 +316,32 @@ namespace vslam {
             ref_ptr += (patch_t::border_sz * 2);
         }
 
+        const int cur_stride = img_cur.step.p[0];
+
         double intensity_mean_diff = 0.;
         double u = uv_cur.x(), v = uv_cur.y();
 
-        int x = std::floor(u), y = std::floor(v);
-        double dx = u - x, dy = v - y;
-
-        double w00 = (1. - dx) * (1. - dy);
-        double w01 = dx * (1. - dy);
-        double w10 = (1. - dx) * dy;
-        double w11 = dx * dy;
-
-        const int cur_stride = img_cur.step.p[0];
-        uint8_t* cur_ptr = 
-            img_cur.data + (y - patch_t::half_sz) * cur_stride + (x - patch_t::half_sz);
-        ref_ptr = patch.start();
-        dl_ptr = patch_dl_ref;
-
         double last_chi2 = std::numeric_limits<double>::max();
         double last_u = u, last_v = v;
+        double last_intensity_mean_diff = 0.;
         bool converged = false;
 
         for (size_t i = 0; i < n_iterations; ++i) {
 
             if (!utils::in_image(img_cur, u, v, patch_t::half_sz)) { break; }
+
+            int x = std::floor(u), y = std::floor(v);
+            double dx = u - x, dy = v - y;
+
+            double w00 = (1. - dx) * (1. - dy);
+            double w01 = dx * (1. - dy);
+            double w10 = (1. - dx) * dy;
+            double w11 = dx * dy;
+
+            uint8_t* cur_ptr = 
+                img_cur.data + (y - patch_t::half_sz) * cur_stride + (x - patch_t::half_sz);
+            ref_ptr = patch.start();
+            dl_ptr = patch_dl_ref;
 
             double chi2 = 0.0;
             Eigen::Vector2d b = Eigen::Vector2d::Zero();
@@ -377,9 +372,10 @@ namespace vslam {
             if (delta.hasNaN()) { assert(false); return false; }
             if (0 < i && last_chi2 < chi2) { 
 #ifdef _ME_VSLAM_DEBUG_INFO_
-                std::cout << "align1d loss increased" << std::endl;
+                std::cout << "align1d loss increased at " << i << std::endl;
 #endif
                 u = last_u; v = last_v;  
+                intensity_mean_diff = last_intensity_mean_diff;
                 break; 
             }
 
@@ -393,6 +389,7 @@ namespace vslam {
 
             last_u = u;
             last_v = v;
+            last_intensity_mean_diff = intensity_mean_diff;
             last_chi2 = chi2;
             
             // p := p - delta_p
@@ -435,31 +432,32 @@ namespace vslam {
             ref_ptr += (patch_t::border_sz * 2);
         }
 
-        double intensity_mean_diff = 0.;
-        double u = uv_cur.x(), v = uv_cur.y();
-
-        int x = std::floor(u), y = std::floor(v);
-        double dx = u - x, dy = v - y;
-
-        double w00 = (1. - dx) * (1. - dy);
-        double w01 = dx * (1. - dy);
-        double w10 = (1. - dx) * dy;
-        double w11 = dx * dy;
-
         const int cur_stride = img_cur.step.p[0];
-        uint8_t* cur_ptr = 
-            img_cur.data + (y - patch_t::half_sz) * cur_stride + (x - patch_t::half_sz);
-        ref_ptr = patch.start();
-        dx_ptr = patch_dx_ref;
-        dy_ptr = patch_dy_ref;
+        double u = uv_cur.x(), v = uv_cur.y();
+        double intensity_mean_diff = 0.;
 
         double last_chi2 = std::numeric_limits<double>::max();
-        double last_u = u, last_v = v;
+        double last_u = uv_cur.x(), last_v = uv_cur.y(); 
+        double last_intensity_mean_diff = 0.;
         bool converged = false;
 
         for (size_t i = 0; i < n_iterations; ++i) {
 
             if (!utils::in_image(img_cur, u, v, patch_t::half_sz)) { break; }
+
+            int x = std::floor(u), y = std::floor(v);
+            double dx = u - x, dy = v - y;
+
+            double w00 = (1. - dx) * (1. - dy);
+            double w01 = dx * (1. - dy);
+            double w10 = (1. - dx) * dy;
+            double w11 = dx * dy;
+
+            uint8_t* cur_ptr = 
+                img_cur.data + (y - patch_t::half_sz) * cur_stride + (x - patch_t::half_sz);
+            ref_ptr = patch.start();
+            dx_ptr = patch_dx_ref;
+            dy_ptr = patch_dy_ref;
 
             double chi2 = 0.0;
             Eigen::Vector3d b = Eigen::Vector3d::Zero();
@@ -488,9 +486,10 @@ namespace vslam {
             if (delta.hasNaN()) { assert(false); return false; }
             if (0 < i && last_chi2 < chi2) { 
 #ifdef _ME_VSLAM_DEBUG_INFO_
-                std::cout << "align2d loss increased" << std::endl;
+                std::cout << "align2d loss increased at " << i << std::endl;
 #endif
-                u = last_u; v = last_v;  
+                u = last_u; v = last_v; 
+                intensity_mean_diff = last_intensity_mean_diff;
                 break; 
             }
 
@@ -504,6 +503,7 @@ namespace vslam {
 
             last_u = u;
             last_v = v;
+            last_intensity_mean_diff = intensity_mean_diff;
             last_chi2 = chi2;
 
             u -= delta[0];
