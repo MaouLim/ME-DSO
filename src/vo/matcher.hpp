@@ -110,7 +110,7 @@ namespace vslam {
 
     struct alignment {
 
-        static constexpr double align_converge_thresh = 2e-3;
+        static constexpr double align_converge_thresh = 3e-2;
         
         /**
          * @brief using ICIA to align the feature along the indicted direction 

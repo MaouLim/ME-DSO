@@ -33,9 +33,16 @@ namespace vslam {
             ref->camera, feat_ref->uv, feat_ref->level, 
             xyz_ref.z(), _check_sz, cur->t_cw * ref->t_wc
         );
-
+#ifdef _ME_VSLAM_DEBUG_INFO_
+        std::cout << "Affine transformation from frame[" 
+                  << ref->id << "] to frame[" << cur->id << "]:" << std::endl;
+        std::cout << "ref uv: " << feat_ref->uv.transpose() << std::endl;
+        std::cout << "cur uv: " << uv_cur.transpose() << std::endl;
+        std::cout << affine_cr << std::endl;
+#endif
         size_t max_level = config::pyr_levels - 1; assert(0 < config::pyr_levels);
         size_t search_level = affine::search_best_level(affine_cr, max_level);
+
         affine::extract_patch_affine(
             ref->pyramid[feat_ref->level], feat_ref->uv, feat_ref->level, 
             affine_cr.inverse(), search_level, _patch
@@ -277,6 +284,7 @@ namespace vslam {
                 else {
                     *ptr = utils::bilinear_interoplate<uint8_t>(image_leveln_ref, uv[0], uv[1]);
                 }
+                ++ptr;
             }
         }
         return true;
@@ -374,17 +382,11 @@ namespace vslam {
 #ifdef _ME_VSLAM_DEBUG_INFO_
                 std::cout << "align1d loss increased at " << i << std::endl;
 #endif
+#ifdef _ME_VSLAM_ALIGN_CONSERVATIVE_
                 u = last_u; v = last_v;  
                 intensity_mean_diff = last_intensity_mean_diff;
                 break; 
-            }
-
-            if (delta.norm() < align_converge_thresh) {
-#ifdef _ME_VSLAM_DEBUG_INFO_
-                std::cout << "align1d converged" << std::endl;
 #endif
-                converged = true;
-                break;
             }
 
             last_u = u;
@@ -396,6 +398,14 @@ namespace vslam {
             u -= delta[0] * search_dir[0];
             v -= delta[0] * search_dir[1];
             intensity_mean_diff -= delta[1];
+
+            if (std::abs(delta[0]) < align_converge_thresh) {
+#ifdef _ME_VSLAM_DEBUG_INFO_
+                std::cout << "align1d converged at " << i << std::endl;
+#endif
+                converged = true;
+                break;
+            }
         }
 
         uv_cur << u, v;
@@ -488,17 +498,11 @@ namespace vslam {
 #ifdef _ME_VSLAM_DEBUG_INFO_
                 std::cout << "align2d loss increased at " << i << std::endl;
 #endif
+#ifdef _ME_VSLAM_ALIGN_CONSERVATIVE_
                 u = last_u; v = last_v; 
                 intensity_mean_diff = last_intensity_mean_diff;
-                break; 
-            }
-
-            if (delta.norm() < align_converge_thresh) {
-#ifdef _ME_VSLAM_DEBUG_INFO_
-                std::cout << "align2d converged" << std::endl;
-#endif
-                converged = true;
                 break;
+#endif
             }
 
             last_u = u;
@@ -509,6 +513,14 @@ namespace vslam {
             u -= delta[0];
             v -= delta[1];
             intensity_mean_diff -= delta[2];
+
+            if (delta.head<2>().norm() < align_converge_thresh) {
+#ifdef _ME_VSLAM_DEBUG_INFO_
+                std::cout << "align2d converged at " << i << std::endl;
+#endif
+                converged = true;
+                break;
+            }
         }
 
         uv_cur << u, v;

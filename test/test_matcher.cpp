@@ -6,6 +6,7 @@
 #include <vo/camera.hpp>
 #include <vo/frame.hpp>
 #include <vo/feature.hpp>
+#include <vo/map_point.hpp>
 
 const std::string dataset_dir = "data/fr1_xyz/";
 const std::string association_file = dataset_dir + "rgb-gt.txt";
@@ -93,15 +94,132 @@ int main(int argc, char** argv) {
         if (vslam::initializer::SUCCESS == ret) { break; }
     }
 
-    size_t test_img_idx = i + 2;
+    // Sophus::SE3d gt = gts[i] * gts[0].inverse();
+    // std::cout << "GT R:\n" << gt.rotationMatrix() << std::endl;
+    // std::cout << "GT t:\n" << gt.translation().normalized().transpose() << std::endl;
+    std::cout << "EST R:\n" << f->t_cw.rotationMatrix() << std::endl;
+    std::cout << "EST t:\n" << f->t_cw.translation().normalized().transpose() << std::endl;
+
+    size_t test_img_idx = i + 4;
     vslam::frame_ptr test_frame = 
         utils::mk_vptr<vslam::frame>(cam, images[test_img_idx].second, images[test_img_idx].first);
 
+    cv::imshow("first_frame", draw_feats(first_frame));
     cv::imshow("f", draw_feats(f));
     cv::imshow("test_frame", test_frame->image());
     cv::waitKey();
 
-    //vslam::twoframe_estimator(config::max_opt_iterations, 4, 0, );
+#ifdef _TEST_A_SINGLE_SAMPLE_
+    {
+        cv::Mat f0, f2;
+        cv::cvtColor(first_frame->image(), f0, cv::COLOR_GRAY2BGR);
+        cv::circle(f0, cv::Point2i{ 421, 410 }, 2, 0);
+        cv::imshow("f0", f0);
+        cv::cvtColor(test_frame->image(), f2, cv::COLOR_GRAY2BGR);
+        cv::circle(f2, cv::Point2f{ 459.6146236935906f, 375.44258665888685f }, 2, 0);
+        cv::imshow("f2", f2);
+        cv::waitKey();
+
+        Eigen::Vector2d uv_ref = { 421, 410 };
+        Eigen::Vector2d uv_cur = { 459.6146236935906, 375.44258665888685 };
+
+        vslam::patch_t patch_ref;
+        uint8_t* ptr = patch_ref.data;
+
+        double center_x = uv_ref.x();
+        double center_y = uv_ref.y();
+
+        std::cout << "patch:" << std::endl;
+
+        for (auto r = 0; r < 10; ++r) {
+            for (auto c = 0; c < 10; ++c) {
+                double x = center_x - 5. + c;
+                double y = center_y - 5. + r;
+                double v = utils::bilinear_interoplate<uint8_t>(first_frame->image(), x, y);
+                assert(v < 255.);
+                *ptr = (uint8_t) v;
+                std::cout << int(*ptr) << " ";
+                ++ptr;
+            }
+            std::cout << std::endl;
+        }
+
+        std::cout << "Align success: " 
+                  << vslam::alignment::align2d(test_frame->image(), patch_ref, 10, uv_cur) 
+                  << std::endl;
+        cv::circle(f2, cv::Point2f{ uv_cur.x(), uv_cur.y() }, 2, { 0, 0, 255 });
+        cv::imshow("f2-align", f2);
+        cv::waitKey();
+    }
+#endif
+
+    {
+        vslam::twoframe_estimator tf_est(
+            config::max_opt_iterations, 4, 0, vslam::twoframe_estimator::LK_ICIA
+        );
+        Sophus::SE3d t_21;
+        tf_est.estimate(f, test_frame, t_21);
+
+        cv::Mat f2_clone;
+        cv::cvtColor(test_frame->image(), f2_clone, cv::COLOR_GRAY2BGR);
+
+        std::vector<std::pair<vslam::map_point_ptr, Eigen::Vector2d>> candidates;
+
+        for (auto& feat : f->features) {
+            if (feat->describe_nothing()) { continue; }
+            const auto& mp = feat->map_point_describing;
+            Eigen::Vector3d xyz_f = f->t_cw * mp->position;
+            Eigen::Vector3d xyz_2 = t_21 * xyz_f;
+            Eigen::Vector2d uv_2  = test_frame->camera->cam2pixel(xyz_2);
+            cv::circle(f2_clone, cv::Point2f{ uv_2.x(), uv_2.y() }, 2, { 0, 0, 255 });
+            candidates.emplace_back(mp, uv_2);
+        }
+
+        cv::imshow("test_frame_ICIA", f2_clone);
+        cv::waitKey();
+
+        vslam::patch_matcher matcher(true);
+
+        size_t count_matches = 0;
+
+        for (auto& each : candidates) {
+            vslam::feature_ptr new_feat;
+            bool success = matcher.match_direct(each.first, test_frame, each.second, new_feat);
+            std::cout << "Succeed to matched: " << success << std::endl;
+            if (success && new_feat) { new_feat->use(); ++count_matches; } 
+        }
+
+        std::cout << "Total candidates: " << candidates.size() << std::endl;
+        std::cout << "Matches: " << count_matches << std::endl;
+        
+        cv::imshow("After match", draw_feats(test_frame));
+        cv::waitKey();
+    }
+
+#ifdef _TEST_MATCHER_USING_LK_FCFA_
+    {
+        vslam::twoframe_estimator tf_est(
+            config::max_opt_iterations, 4, 0, vslam::twoframe_estimator::LK_FCFA
+        );
+        Sophus::SE3d t_21;
+        tf_est.estimate(f, test_frame, t_21);
+
+        cv::Mat f2_clone;
+        cv::cvtColor(test_frame->image(), f2_clone, cv::COLOR_GRAY2BGR);
+
+        for (auto& feat : f->features) {
+            if (feat->describe_nothing()) { continue; }
+            const auto& mp = feat->map_point_describing;
+            Eigen::Vector3d xyz_f = f->t_cw * mp->position;
+            Eigen::Vector3d xyz_2 = t_21 * xyz_f;
+            Eigen::Vector2d uv_2  = test_frame->camera->cam2pixel(xyz_2);
+            cv::circle(f2_clone, cv::Point2f{ uv_2.x(), uv_2.y() }, 2, { 0, 0, 255 });
+        }
+
+        cv::imshow("test_frame_FCFA", f2_clone);
+        cv::waitKey();
+    }
+#endif   
 
     return 0;
 }

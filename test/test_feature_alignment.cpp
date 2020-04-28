@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
 
     assert(img_ref.data && img_cur.data);
 
-    cv::Ptr<cv::GFTTDetector> det = cv::GFTTDetector::create(1000, 0.01, 5);
+    cv::Ptr<cv::GFTTDetector> det = cv::GFTTDetector::create(400);
     std::vector<cv::KeyPoint> kpts;
     det->detect(img_ref, kpts);
 
@@ -171,6 +171,7 @@ int main(int argc, char** argv) {
     cv::waitKey();
 
     const int half_sz = 5;
+    size_t count_converged = 0;
 
     for (auto i = 0; i < status.size(); ++i) {
         if (!status[i]) { continue; }
@@ -194,9 +195,11 @@ int main(int argc, char** argv) {
 
         auto pt = uvs_cur_noisy[i];
         Eigen::Vector2d uv_cur = { pt.x, pt.y };
-        alignment::align2d(img_cur, patch_ref, 10, uv_cur);
+        count_converged += alignment::align2d(img_cur, patch_ref, 10, uv_cur);
         uvs_cur_noisy[i] = cv::Point2f(uv_cur.x(), uv_cur.y());
     }
+
+    std::cout << "TOTAL CONVERGED: " << count_converged << std::endl;
 
     cv::Mat a2;
     cv::cvtColor(img_cur, a2, cv::COLOR_GRAY2RGB);

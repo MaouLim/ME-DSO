@@ -201,7 +201,7 @@ namespace vslam {
         size_t max_feats = (config::width / config::cell_sz) * 
                            (config::height / config::cell_sz);
         cv::Ptr<cv::GFTTDetector> det = 
-            cv::GFTTDetector::create(max_feats, 0.01, config::cell_sz / 2.);
+            cv::GFTTDetector::create(max_feats, 0.05, config::cell_sz / 2.);
         std::vector<cv::KeyPoint> kpts;
         det->detect(target->image(), kpts);
 
