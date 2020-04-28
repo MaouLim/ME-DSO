@@ -318,7 +318,7 @@ namespace utils {
         a(0, 1) = -xy1_ref.dot(f2);
         a(1, 0) = -a(0, 1);
         a(1, 1) = -f2.dot(f2);
-        if (a.determinant() < 1e-8) { return false; }
+        if (std::abs(a.determinant()) < 1e-8) { return false; }
         auto s = a.inverse() * b;
         z_ref = s[0]; z_cur = s[1];
         return true;

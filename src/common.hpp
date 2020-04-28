@@ -3,7 +3,7 @@
 
 #define CONST_EPS    1e-8
 #define CONST_COS_60 0.5
-#define CONST_COS_45 0.70711
+#define CONST_COS_45 0.707106781186547524400
 
 /**
  * @cpp_headers stdc++
@@ -218,7 +218,7 @@ namespace config {
 
     extern const double min_corner_score;
 
-    extern const double max_epipolar_search_ssd;   
+    extern const double min_epipolar_search_ncc;   
     extern const int    max_epipolar_search_steps; 
     extern const double max_angle_between_epi_grad;
     extern const double min_len_to_epipolar_search;

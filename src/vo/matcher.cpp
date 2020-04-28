@@ -155,16 +155,24 @@ namespace vslam {
 
         size_t n_steps = epipolar_pixel_len / config::epipolar_search_step;
         Eigen::Vector2d step = epipolar_unit_plane / n_steps;
-        if (config::max_epipolar_search_steps < n_steps) { return false; }
+        if (config::max_epipolar_search_steps < n_steps) { 
+#ifdef _ME_VSLAM_DEBUG_INFO_
+            std::cout << "The epipolar is too long: " 
+                      << epipolar_pixel_len 
+                      << std::endl;
+#endif
+            return false; 
+        }
 
         // epipolar search
-        double best_ssd = std::numeric_limits<double>::max();
+        //double best_ssd = std::numeric_limits<double>::max();
+        double best_ncc = 0.;
         Eigen::Vector2d best_xy;
         Eigen::Vector2d xy = xy_min_cur + step;
         Eigen::Vector2i last_uv(0, 0);
         const cv::Mat& img_leveln = cur->pyramid[level_cur];
         
-        for (size_t i = 0; i < n_steps; ++i) {
+        for (size_t i = 0; i < n_steps; ++i, xy += step) {
 
             Eigen::Vector2d uv = cur->camera->cam2pixel(utils::homogenize(xy));
             Eigen::Vector2i uv_leveln = (uv / scale).cast<int>();
@@ -181,24 +189,49 @@ namespace vslam {
 
             const int cur_stride = img_leveln.step.p[0];
             uint8_t* patch_cur = 
-                img_leveln.data + (uv_leveln.y() - patch_t::half_sz) * cur_stride + uv_leveln.x();
-            double ssd = 
-                utils::diff_2d<uint8_t>::zm_ssd(
-                    _patch.data, patch_t::stride(), 
-                      patch_cur, cur_stride
+                img_leveln.data + (uv_leveln.y() - patch_t::half_sz) * cur_stride + uv_leveln.x() - patch_t::half_sz;
+            double ncc = 
+                utils::diff_2d<uint8_t>::zm_ncc(
+                    _patch.start(), patch_t::stride(), 
+                    patch_cur,      cur_stride
                 );
-            if (ssd < best_ssd) {
-                best_ssd = ssd;
+            if (best_ncc < ncc) {
+                best_ncc = ncc;
                 best_xy = xy;
             }
-            xy += step;
         }
 
-        // the difference is too large
-        if (config::max_epipolar_search_ssd < best_ssd) { return false; }
+        if (best_ncc < config::min_epipolar_search_ncc) { 
+#ifdef _ME_VSLAM_DEBUG_INFO_
+            std::cout << "No similar patch." << std::endl;
+            std::cout << "Best Zero-Mean-NCC: " << best_ncc << std::endl;
+#endif
+            return false;
+        }
 
         // subpixel refinement
         Eigen::Vector2d best_uv = cur->camera->cam2pixel(utils::homogenize(best_xy));
+
+#ifdef _ME_VSLAM_DEBUG_INFO_
+//#define _ME_VSLAM_DEBUG_DRAW_EPIPOLAR_ 1
+#ifdef _ME_VSLAM_DEBUG_DRAW_EPIPOLAR_
+        cv::Mat f0, f1;
+        cv::cvtColor(ref->image(), f0, cv::COLOR_GRAY2BGR);
+        cv::cvtColor(cur->image(), f1, cv::COLOR_GRAY2BGR);
+        cv::Point2f p  = { feat_ref->uv.x(), feat_ref->uv.y() };
+        cv::Point2f p0 = {   uv_min_cur.x(),   uv_min_cur.y() };
+        cv::Point2f p1 = {   uv_max_cur.x(),   uv_max_cur.y() };
+        cv::Point2f c  = {      best_uv.x(),      best_uv.y() };
+        cv::line(f1, p0, p1, { 0, 0, 255 }, 1);
+        cv::circle(f0, p, 2, { 0, 255, 255 }, 2);
+        cv::circle(f1, c, 2, { 0, 255, 255 }, 2);
+        cv::Mat f_concat;
+        cv::hconcat(f0, f1, f_concat);
+        cv::imshow("vis epipolar search", f_concat);
+        cv::waitKey();
+#endif
+#endif
+
         Eigen::Vector2d best_uv_leveln = best_uv / scale;
         bool success = false;
         if (use_alignment_1d) {

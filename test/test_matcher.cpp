@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
     std::cout << "EST R:\n" << f->t_cw.rotationMatrix() << std::endl;
     std::cout << "EST t:\n" << f->t_cw.translation().normalized().transpose() << std::endl;
 
-    size_t test_img_idx = i + 4;
+    size_t test_img_idx = i + 10;
     vslam::frame_ptr test_frame = 
         utils::mk_vptr<vslam::frame>(cam, images[test_img_idx].second, images[test_img_idx].first);
 
@@ -109,6 +109,7 @@ int main(int argc, char** argv) {
     cv::imshow("test_frame", test_frame->image());
     cv::waitKey();
 
+#ifdef _TEST_MATCH_DIRECT_
 #ifdef _TEST_A_SINGLE_SAMPLE_
     {
         cv::Mat f0, f2;
@@ -159,6 +160,7 @@ int main(int argc, char** argv) {
         );
         Sophus::SE3d t_21;
         tf_est.estimate(f, test_frame, t_21);
+        test_frame->set_pose(t_21 * f->t_cw);
 
         cv::Mat f2_clone;
         cv::cvtColor(test_frame->image(), f2_clone, cv::COLOR_GRAY2BGR);
@@ -220,6 +222,77 @@ int main(int argc, char** argv) {
         cv::waitKey();
     }
 #endif   
+#endif
+
+#define _TEST_MATCH_EPIPOLAR_SEARCH_ 1
+#ifdef _TEST_MATCH_EPIPOLAR_SEARCH_
+
+    {
+        vslam::twoframe_estimator tf_est(
+            config::max_opt_iterations, 4, 0, vslam::twoframe_estimator::LK_ICIA
+        );
+        Sophus::SE3d t_21;
+        tf_est.estimate(f, test_frame, t_21);
+        test_frame->set_pose(t_21 * f->t_cw);
+
+        cv::Mat f2_clone;
+        cv::cvtColor(test_frame->image(), f2_clone, cv::COLOR_GRAY2BGR);
+
+        size_t count_reproj_success = 0;
+
+        for (auto& feat : f->features) {
+            if (feat->describe_nothing()) { continue; }
+            const auto& mp = feat->map_point_describing;
+            Eigen::Vector3d xyz_2 = test_frame->t_cw * mp->position;
+            Eigen::Vector2d uv_2  = test_frame->camera->cam2pixel(xyz_2);
+            if (!test_frame->visible(uv_2)) { continue; }
+            ++count_reproj_success;
+            cv::circle(f2_clone, cv::Point2f{ uv_2.x(), uv_2.y() }, 2, { 0, 0, 255 });
+        }
+
+        std::cout << "Total features: " << f->features.size() << std::endl;
+        std::cout << "Reproj: " << count_reproj_success << std::endl;;
+        cv::imshow("test_frame_LK_ICIA", f2_clone);
+        cv::waitKey();
+
+        vslam::patch_matcher matcher(false);
+
+        size_t count_epi_search = 0;
+        double d_mean_err = 0;
+
+        for (auto& feat : first_frame->features) {
+            if (feat->describe_nothing()) { continue; }
+            const auto& mp = feat->map_point_describing;
+            double d_gt = (mp->position - first_frame->cam_center()).norm();
+
+            double d_est = d_gt * 1.2;
+            double d_min = d_gt * 0.8;
+            double d_max = d_gt * 2.0;
+
+            bool success = 
+                matcher.match_epipolar_search(first_frame, test_frame, feat, d_min, d_max, d_est);
+            count_epi_search += success;
+            std::cout << "Match Epipolar: " << success << std::endl;
+            if (success) {
+                std::cout << "depth GT: " << d_gt  << std::endl;
+                std::cout << "depth EST: " << d_est << std::endl;
+
+                d_mean_err += (d_est - d_gt) * (d_est - d_gt);
+
+                Eigen::Vector3d xyz_est = mp->position / d_gt * d_est;
+                Eigen::Vector3d xyz_est_f2 = test_frame->t_cw * xyz_est;
+                Eigen::Vector2d uv_est = test_frame->camera->cam2pixel(xyz_est_f2);
+                cv::circle(f2_clone, cv::Point2f{ uv_est.x(), uv_est.y() }, 2, { 0, 255, 255 });
+            }
+        }
+        std::cout << "Total features: " << first_frame->features.size() << std::endl;
+        std::cout << "Epipolar search matches: " << count_epi_search << std::endl;
+        std::cout << "Mean error: " << std::sqrt(d_mean_err / count_epi_search) << std::endl;
+        cv::imshow("epipolar search f2", f2_clone);
+        cv::waitKey();
+    }
+
+#endif
 
     return 0;
 }
