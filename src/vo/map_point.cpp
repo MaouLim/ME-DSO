@@ -180,11 +180,11 @@ namespace vslam {
             }
 
             Eigen::Vector3d delta = H.ldlt().solve(b);
-            if (!std::isnan(delta[0])) { assert(false); return -1.; }
+            if (delta.hasNaN()) { assert(false); return -1.; }
 
             if (0 < i && last_chi2 < chi2) {
-#ifdef _ME_SLAM_DEBUG_INFO_
-                std::cout << "loss increased, roll back." << std::endl;
+#ifdef _ME_VSLAM_DEBUG_INFO_OPT_
+                std::cout << "[MP]" << "Loss increased at " << i << std::endl;
 #endif
                 position = old_pos;
                 break;
@@ -195,8 +195,8 @@ namespace vslam {
             last_chi2 = chi2;
 
             if (delta.norm() < converge_eps) {
-#ifdef _ME_SLAM_DEBUG_INFO_
-                std::cout << "converged." << std::endl;
+#ifdef _ME_VSLAM_DEBUG_INFO_OPT_
+                std::cout << "[MP]" << "Converged at" << i << std::endl;
 #endif 
                 break;
             }
@@ -277,7 +277,6 @@ namespace vslam {
     }
 
     bool candidate_set::extract_observed_by(const frame_ptr& frame) {
-        // TODO
         lock_t lock(_mutex_c);
         auto itr = _candidates.begin();
         while (_candidates.end() != itr) {

@@ -30,16 +30,16 @@ namespace vslam::backend {
 
     struct local_map_ba : g2o_optimizer {
 
-        local_map_ba(std::set<frame_ptr>& core_kfs, double reproj_thresh) : 
-            _core_kfs(core_kfs), _reproj_thresh2(reproj_thresh * reproj_thresh) { }
+        local_map_ba(std::set<frame_ptr>& local_map, double reproj_thresh) : 
+            _local_map(local_map), _reproj_thresh2(reproj_thresh * reproj_thresh) { }
 
         void create_graph() override;
         void update() override;
 
-        void set_core_kfs(std::set<frame_ptr>& core_kfs) { _core_kfs = core_kfs; }
+        void set_local_map(std::set<frame_ptr>& core_kfs) { _local_map = core_kfs; }
 
     private:
-        std::set<frame_ptr>& _core_kfs;
+        std::set<frame_ptr>& _local_map;
         double               _reproj_thresh2;
 
         /**
@@ -56,17 +56,15 @@ namespace vslam::backend {
 
     struct global_map_ba : g2o_optimizer {
 
-        global_map_ba(const map_ptr& m, double reproj_thresh) : 
+        global_map_ba(map& m, double reproj_thresh) : 
             _map(m), _reproj_thresh(reproj_thresh) 
-        { 
-            assert(_map);
-        }
+        { }
 
         void create_graph() override;
         void update() override;
 
     private:
-        map_ptr _map;
+        map&    _map;
         double  _reproj_thresh;
 
         /**

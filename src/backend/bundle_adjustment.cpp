@@ -64,7 +64,7 @@ namespace vslam::backend {
         int v_seq = 0;
         _clear_cache();
 
-        for (auto& kf : _core_kfs) {
+        for (auto& kf : _local_map) {
             auto v = kf->create_g2o(v_seq++);
             _optimizer.addVertex(v);
 
@@ -99,7 +99,7 @@ namespace vslam::backend {
     }
 
     void local_map_ba::update() {
-        for (auto& kf : _core_kfs) { kf->update_from_g2o(); }
+        for (auto& kf : _local_map) { kf->update_from_g2o(); }
         for (auto& covisible : _covisibles) { covisible->shutdown_g2o(); }
         for (auto& mp : _mps) { mp->update_from_g2o(); }
         for (auto& feat : _feats) { feat->update_from_g2o(_reproj_thresh2); }
@@ -109,7 +109,7 @@ namespace vslam::backend {
         int v_seq = 0;
         _clear_cache();
 
-        for (auto& kf : _map->key_frames()) {
+        for (auto& kf : _map.key_frames()) {
             auto v_kf = kf->create_g2o(v_seq++);
             _optimizer.addVertex(v_kf);
 
@@ -135,7 +135,7 @@ namespace vslam::backend {
     }
 
     void global_map_ba::update() {
-        for (auto& kf : _map->key_frames()) { kf->update_from_g2o(); }
+        for (auto& kf : _map.key_frames()) { kf->update_from_g2o(); }
         for (auto& mp : _mps) { mp->update_from_g2o(); }
 
         for (auto& feat : _feats_bad) { 

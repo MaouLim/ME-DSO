@@ -33,8 +33,9 @@ namespace vslam {
             ref->camera, feat_ref->uv, feat_ref->level, 
             xyz_ref.z(), _check_sz, cur->t_cw * ref->t_wc
         );
-#ifdef _ME_VSLAM_DEBUG_INFO_
-        std::cout << "Affine transformation from frame[" 
+#ifdef _ME_VSLAM_DEBUG_INFO_MATCHER_
+        std::cout << "[MACTHER]"
+                  << "Affine transformation from frame[" 
                   << ref->id << "] to frame[" << cur->id << "]:" << std::endl;
         std::cout << "ref uv: " << feat_ref->uv.transpose() << std::endl;
         std::cout << "cur uv: " << uv_cur.transpose() << std::endl;
@@ -157,7 +158,8 @@ namespace vslam {
         Eigen::Vector2d step = epipolar_unit_plane / n_steps;
         if (config::max_epipolar_search_steps < n_steps) { 
 #ifdef _ME_VSLAM_DEBUG_INFO_
-            std::cout << "The epipolar is too long: " 
+            std::cout << "[MACTHER]"
+                      << "The epipolar is too long: " 
                       << epipolar_pixel_len 
                       << std::endl;
 #endif
@@ -202,9 +204,10 @@ namespace vslam {
         }
 
         if (best_ncc < config::min_epipolar_search_ncc) { 
-#ifdef _ME_VSLAM_DEBUG_INFO_
-            std::cout << "No similar patch." << std::endl;
-            std::cout << "Best Zero-Mean-NCC: " << best_ncc << std::endl;
+#ifdef _ME_VSLAM_DEBUG_INFO_MATCHER_
+            std::cout << "[MACTHER]"
+                      << "No similar patch."
+                      << "Best Zero-Mean-NCC: " << best_ncc << std::endl;
 #endif
             return false;
         }
@@ -412,8 +415,8 @@ namespace vslam {
             Eigen::Vector2d delta = hessian.ldlt().solve(b);
             if (delta.hasNaN()) { assert(false); return false; }
             if (0 < i && last_chi2 < chi2) { 
-#ifdef _ME_VSLAM_DEBUG_INFO_
-                std::cout << "align1d loss increased at " << i << std::endl;
+#ifdef _ME_VSLAM_DEBUG_INFO_OPT_
+                std::cout << "[ALIGN1D]" << "Loss increased at " << i << std::endl;
 #endif
 #ifdef _ME_VSLAM_ALIGN_CONSERVATIVE_
                 u = last_u; v = last_v;  
@@ -433,8 +436,8 @@ namespace vslam {
             intensity_mean_diff -= delta[1];
 
             if (std::abs(delta[0]) < align_converge_thresh) {
-#ifdef _ME_VSLAM_DEBUG_INFO_
-                std::cout << "align1d converged at " << i << std::endl;
+#ifdef _ME_VSLAM_DEBUG_INFO_OPT_
+                std::cout << "[ALIGN1D]" << "Converged at " << i << std::endl;
 #endif
                 converged = true;
                 break;
@@ -528,8 +531,8 @@ namespace vslam {
             Eigen::Vector3d delta = hessian.ldlt().solve(b);
             if (delta.hasNaN()) { assert(false); return false; }
             if (0 < i && last_chi2 < chi2) { 
-#ifdef _ME_VSLAM_DEBUG_INFO_
-                std::cout << "align2d loss increased at " << i << std::endl;
+#ifdef _ME_VSLAM_DEBUG_INFO_OPT_
+                std::cout << "[ALIGN2D]" << "Loss increased at " << i << std::endl;
 #endif
 #ifdef _ME_VSLAM_ALIGN_CONSERVATIVE_
                 u = last_u; v = last_v; 
@@ -548,8 +551,8 @@ namespace vslam {
             intensity_mean_diff -= delta[2];
 
             if (delta.head<2>().norm() < align_converge_thresh) {
-#ifdef _ME_VSLAM_DEBUG_INFO_
-                std::cout << "align2d converged at " << i << std::endl;
+#ifdef _ME_VSLAM_DEBUG_INFO_OPT_
+                std::cout << "[ALIGN2D]" << "Converged at " << i << std::endl;
 #endif
                 converged = true;
                 break;

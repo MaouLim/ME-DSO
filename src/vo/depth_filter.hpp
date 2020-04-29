@@ -28,15 +28,9 @@ namespace vslam {
         using converged_callback = std::function<void(const map_point_ptr&, double)>;
         using lock_t             = std::lock_guard<std::mutex>;
 
-        static const size_t max_queue_sz;
-        static const double min_corner_score;
-        static const size_t max_seed_lifetime;
+        static constexpr size_t max_queue_sz = 5;
 
-        // struct options_t {
-        //     bool   check_feature_angle;
-        //     double seed_converge_thresh;
-        // } options;
-
+        explicit depth_filter(const converged_callback& _cb);
         depth_filter(const detector_ptr& _det, const converged_callback& _cb);
         virtual ~depth_filter() = default;
 

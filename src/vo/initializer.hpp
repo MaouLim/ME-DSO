@@ -81,6 +81,7 @@ namespace vslam {
         ) const;
     };
 
+#ifdef _ME_VSLAM_USE_INITV2_
     struct initializer_v2 {
 
         enum op_result { 
@@ -153,8 +154,8 @@ namespace vslam {
             const Sophus::SE3d& t_10, 
             const Sophus::SE3d& t_21, 
             std::vector<uchar>& status
-        ) { }
-//private:
+        ) { return 0.0; }
+
     public:
         using track_record = 
             std::pair<std::vector<uchar>, std::vector<cv::Point2f>>;
@@ -183,6 +184,7 @@ namespace vslam {
         std::vector<backend::vertex_xyz*>  _vs_mp;
         std::vector<backend::vertex_se3*>  _vs_f;
     };
+#endif
 }
 
 #endif

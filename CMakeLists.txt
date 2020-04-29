@@ -48,13 +48,15 @@ add_library(vslam SHARED
     src/vo/reprojector.cpp
     src/vo/map.cpp
     src/backend/g2o_staff.cpp
+    src/backend/bundle_adjustment.cpp
 )
 target_link_libraries(vslam vslam_utils g2o_core g2o_stuff ${OpenCV_LIBS} ${fast_LIBRARIES})
 
 add_executable(VSLAMTest test/test_vslam.cpp)
-target_link_libraries(VSLAMTest g2o_core g2o_stuff ${OpenCV_LIBS} ${fast_LIBRARIES})
+target_link_libraries(VSLAMTest pthread g2o_core g2o_stuff ${PCL_LIBRARIES} ${OpenCV_LIBS} vslam)
 
 add_executable(ThreadingTest test/test_threading.cpp)
+target_link_libraries(ThreadingTest pthread)
 
 add_executable(UtilsTest test/test_utils.cpp)
 target_link_libraries(UtilsTest ${OpenCV_LIBS} vslam_utils)

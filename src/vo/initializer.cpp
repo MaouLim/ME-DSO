@@ -17,13 +17,13 @@ namespace vslam {
     initializer::add_frame(const frame_ptr& frame) {
         if (!ref) { 
 #ifdef _ME_VSLAM_DEBUG_INFO_
-            std::cout << "Reference frame not set, set as a first frame" << std::endl;
+            std::cout << "[INIT]" << "Reference frame not set, set as a first frame" << std::endl;
 #endif      
             //size_t n_detected = _detect_features(frame);
             size_t n_detected = _detect_features_v2(frame);
             if (n_detected < config::min_features_in_first) {
 #ifdef _ME_VSLAM_DEBUG_INFO_
-                std::cerr << "Failed to init, too few keypoints: " 
+                std::cout << "[INIT]" << "Failed to init, too few keypoints: " 
                           << n_detected << std::endl;
 #endif            
                 return FEATURES_NOT_ENOUGH;
@@ -81,14 +81,14 @@ namespace vslam {
 
         if (!essential_success && !homography_success) { 
 #ifdef _ME_VSLAM_DEBUG_INFO_
-            std::cout << "Failed to compute pose from matches." << std::endl;
+            std::cout << "[INIT]" << "Failed to compute pose from matches." << std::endl;
 #endif      
             _handle_failure();
             return FAILED_CALC_POSE;
         }
 #ifdef _ME_VSLAM_DEBUG_INFO_
-            std::cout << "Homography score: " << homography_score << std::endl;
-            std::cout << "Essential  score: " << essential_score << std::endl;
+            std::cout << "[INIT]" << "Homography score: " << homography_score << std::endl;
+            std::cout << "[INIT]" << "Essential  score: " << essential_score << std::endl;
 #endif              
         if (homography_score < essential_score) {
             _inliers = std::move(inlier_indices_e);
@@ -104,8 +104,8 @@ namespace vslam {
         size_t n_inliers = _inliers.size();
         double inliers_ratio = double(n_inliers) / _xy1s_ref.size();
 #ifdef _ME_VSLAM_DEBUG_INFO_
-            std::cout << "Inliers: " << n_inliers << std::endl;
-            std::cout << "Ratio of inliers: " << inliers_ratio << std::endl;
+            std::cout << "[INIT]" << "Inliers: " << n_inliers << std::endl;
+            std::cout << "[INIT]" << "Ratio of inliers: " << inliers_ratio << std::endl;
 #endif
         if (inliers_ratio < config::min_inlier_ratio || 
                 n_inliers < config::min_inliers
@@ -347,7 +347,7 @@ namespace vslam {
     /**
      * initializer v2
      */ 
-
+#ifdef _ME_VSLAM_USE_INITV2_
     initializer_v2::initializer_v2() : 
         _n_init_feats(0), _n_final_feats(0), _count_failures(0)
     { 
@@ -783,4 +783,5 @@ namespace vslam {
         optimizer.initializeOptimization();
         optimizer.optimize(config::max_opt_iterations);
     }
+#endif
 }

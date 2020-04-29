@@ -100,13 +100,10 @@ namespace icia {
                 if (update.hasNaN()) { assert(false); }
 
 	    		if (0 < itr && last_chi2 < chi2) {
-	    			std::cout << "loss increased at iteration: " << itr << std::endl;
+#ifdef _ME_VSLAM_DEBUG_INFO_OPT_
+	    			std::cout << "[TF_EST]" << "Loss increased at " << itr << std::endl;
+#endif              
 	    			t_cr = last_t_cr;
-	    			break;
-	    		}
-
-	    		if (update.norm() < CONST_EPS) {
-	    			std::cout << "converged at iteration: " << itr << std::endl;
 	    			break;
 	    		}
 
@@ -114,6 +111,12 @@ namespace icia {
 	    		last_t_cr = t_cr;
 
                 t_cr = t_cr * Sophus::SE3d::exp(-update);
+                if (update.norm() < CONST_EPS) {
+#ifdef _ME_VSLAM_DEBUG_INFO_OPT_
+	    			std::cout << "[TF_EST]" << "Converged at " << itr << std::endl;
+#endif     
+	    			break;
+	    		}
             }
 
             return itr;
@@ -518,19 +521,23 @@ namespace fcfa {
 	    		if (update.hasNaN()) { assert(false); return itr; }
 
 	    		if (0 < itr && last_chi2 < chi2) {
-	    			std::cout << "loss increased at iteration: " << itr << std::endl;
+#ifdef _ME_VSLAM_DEBUG_INFO_OPT_
+	    			std::cout << "[TF_EST]" << "Loss increased at " << itr << std::endl;
+#endif                   
 	    			t_cr = last_t_cr;
-	    			break;
-	    		}
-
-	    		if (update.norm() < CONST_EPS) {
-	    			std::cout << "converged at iteration: " << itr << std::endl;
 	    			break;
 	    		}
 
 	    		last_chi2 = chi2;
 	    		last_t_cr = t_cr;
 	    		t_cr = Sophus::SE3d::exp(update) * t_cr;
+
+                if (update.norm() < CONST_EPS) {
+#ifdef _ME_VSLAM_DEBUG_INFO_OPT_
+	    			std::cout << "[TF_EST]" << "Converged at " << itr << std::endl;
+#endif  
+	    			break;
+	    		}
             }
 
             return itr;
@@ -624,14 +631,11 @@ namespace pnp {
                 if (delta.hasNaN()) { assert(false); }
 
                 if (0 < itr && last_chi2 < chi2) { 
-                    std::cout << "loss increasing at " << itr << std::endl;
+#ifdef _ME_VSLAM_DEBUG_INFO_
+                    std::cout << "[SF_EST]" << "Loss increasing at " << itr << std::endl;
+#endif
                     t_cw = last_t;
                     chi2 = last_chi2;
-                    break;
-                }
-
-                if (delta.norm() < CONST_EPS) { 
-                    std::cout << "converged at " << itr << std::endl;
                     break;
                 }
 
@@ -639,6 +643,13 @@ namespace pnp {
                 last_chi2 = chi2;
 
                 t_cw = Sophus::SE3d::exp(delta) * t_cw;
+
+                if (delta.norm() < CONST_EPS) { 
+#ifdef _ME_VSLAM_DEBUG_INFO_
+                    std::cout << "[SF_EST]" << "Converged at " << itr << std::endl;
+#endif
+                    break;
+                }
             }
 
             return itr;

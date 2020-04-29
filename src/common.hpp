@@ -114,7 +114,6 @@ namespace vslam {
     using camera_ptr       = vptr<abstract_camera>;
     using initializer_ptr  = vptr<initializer>;   
     using matcher_ptr      = vptr<patch_matcher>;
-    using map_ptr          = vptr<map>;
     using reprojector_ptr  = vptr<reprojector>;
     using depth_filter_ptr = vptr<depth_filter>;
     using tf_estimator_ptr = vptr<twoframe_estimator>;
@@ -128,7 +127,6 @@ namespace vslam {
     using camera_cptr       = vptr<const abstract_camera>;
     using initializer_cptr  = vptr<const initializer>;   
     using matcher_cptr      = vptr<const patch_matcher>;
-    using map_cptr          = vptr<const map>;
     using reprojector_cptr  = vptr<const reprojector>;
     using depth_filter_cptr = vptr<const depth_filter>;
 
@@ -136,7 +134,6 @@ namespace vslam {
     using frame_wptr      = wptr<frame>;
     using map_point_wptr  = wptr<map_point>;
     using feature_wptr    = wptr<feature>;
-
 
     /* sets */
     using corner_set  = std::vector<corner>;
@@ -224,6 +221,24 @@ namespace config {
     extern const double min_len_to_epipolar_search;
     extern const double epipolar_search_step;      
 
+
+    extern const int    min_reproj_mps;
+    extern const int    max_mps_to_local_opt;
+    extern const double max_drop_ratio;
+
+    extern const int    max_global_map_frames;
+    extern const int    max_local_map_frames;
+    extern const double min_key_frame_shift_x;
+    extern const double min_key_frame_shift_y;
+    extern const double min_key_frame_shift_z;
+
+    extern const int    max_seed_lifetime; // how many key frames in the lifetime of a seed
+
+    extern const int    max_mps_to_reproj;
+    extern const int    max_overlaped_key_frames;
+    extern const int    max_candidate_mp_fail_reproj;
+    extern const int    max_unknown_mp_fail_reproj;
+    extern const int    min_good_mp_success_reproj;
 }
 
 #define _ME_VSLAM_DEBUG_INFO_ 1

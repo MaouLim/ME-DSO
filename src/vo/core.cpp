@@ -10,46 +10,65 @@
 #include <vo/pose_estimator.hpp>
 #include <vo/map_point.hpp>
 
+#include <backend/bundle_adjustment.hpp>
+
 namespace vslam {
     
     system::system(const camera_ptr& cam) :
-        _state(INITIALIZING), _camera(cam), _last(nullptr)
+        _state(INITIALIZING), _quality(GOOD), _camera(cam), _last(nullptr)
     {
-        int height = _camera->height, width = _camera->width;
-
-        const int cell_sz    = 10;/* TODO with config */
-        const int pyr_levels = 5;
+        assert(_camera);
+        assert(config::height == _camera->height && 
+               config::width == _camera->width);
 
         _reprojector.reset(
-            new reprojector(height, width, cell_sz)
+            new reprojector(config::height, config::width, config::cell_sz)
         );
         _initializer.reset(new initializer());
 
         detector_ptr det =                                                                                                            
-            utils::mk_vptr<fast_detector>(height, width, cell_sz, pyr_levels);
+            utils::mk_vptr<fast_detector>(config::height, config::width, config::cell_sz, config::pyr_levels);
         auto callback = 
             std::bind(&system::_df_callback, this, std::placeholders::_1, std::placeholders::_2);
         _depth_filter.reset(new depth_filter(det, callback));
-        _tf_estimator.reset(new twoframe_estimator(10, 4, 0, twoframe_estimator::LK_FCFA));
+        _tf_estimator.reset(new twoframe_estimator(config::max_opt_iterations, 4, 0, twoframe_estimator::LK_ICIA));
+        _sf_estimator.reset(new singleframe_estimator(config::max_opt_iterations, vslam::singleframe_estimator::PNP_BA));
+    }
+
+    bool system::start() {
+        return _depth_filter->start();
+    }
+
+    bool system::shutdown() {
+        _map.clear();
+        _clear_cache();
+        return _depth_filter->stop();
     }
 
     bool system::process_image(const cv::Mat& raw_img, double timestamp) {
 
-        // TODO cleanup  
+        if (raw_img.empty()) { 
+#ifdef _ME_VSLAM_DEBUG_INFO_
+            std::cout << "[SYSTEM]" << "Empty image data." << std::endl;
+#endif      
+            return false; 
+        }
+
+        _clear_cache();
         
         frame_ptr new_frame = _create_frame(raw_img, timestamp);
 
         switch (_state) {
             case INITIALIZING : {
-                if (track_init_stage(new_frame)) { _state = DEFAULT_FRAME; }
+                _state = track_init_stage(new_frame);
                 break;
             }
-            case DEFAULT_FRAME : {
-                track_frame(new_frame);
+            case TRACKING : {
+                _state = track_frame(new_frame);
                 break;
             }
             case RELOCALIZING : {
-                relocalize();
+                _state = relocalize(new_frame);
                 break;
             }
             default : { assert(false); }
@@ -59,38 +78,48 @@ namespace vslam {
         return true;
     }
 
-    bool system::track_init_stage(const frame_ptr& new_frame) {
+    system::state_t 
+    system::track_init_stage(const frame_ptr& new_frame) {
         auto ret = _initializer->add_frame(new_frame);
         if (initializer::REF_FRAME_SET == ret) {
             new_frame->as_key_frame();
-            _map->add_key_frame(new_frame);
-            return false;
+            _map.add_key_frame(new_frame);
+            return INITIALIZING;
         }
         if (initializer::SUCCESS == ret) {
             new_frame->as_key_frame();
-            _map->add_key_frame(new_frame);
+            _map.add_key_frame(new_frame);
             _depth_filter->commit(new_frame);
             _initializer->reset();
-            return true;
+#ifdef _ME_VSLAM_DEBUG_INFO_
+            std::cout << "[SYSTEM]" << "Initialize successfully." << std::endl; 
+#endif
+            return TRACKING;
         }
-        return false;
+        return INITIALIZING;
     }
 
-    bool system::track_frame(const frame_ptr& new_frame) {
+    system::state_t 
+    system::track_frame(const frame_ptr& new_frame) {
         Sophus::SE3d t_cr;
         _tf_estimator->estimate(_last, new_frame, t_cr);
         new_frame->set_pose(t_cr * _last->t_cw);
 
-        _kfs_with_dis.clear();
-        _kfs_with_overlaps.clear();
-
-        _map->find_covisible_key_frames(new_frame, _kfs_with_dis);
-        size_t n_matches = 
+        _map.find_covisible_key_frames(new_frame, _kfs_with_dis);
+        size_t n_reprojs = 
             _reprojector->reproject_and_match(new_frame, _kfs_with_dis, _candidates, _kfs_with_overlaps);
         
-        if (n_matches < /*min_reproj_matches*/100) {
-            // TODO discard the pose estimation
-            return false;
+#ifdef _ME_VSLAM_DEBUG_INFO_
+            std::cout << "[SYSTEM]" << "Reprojected map points: " 
+                      << n_reprojs << std::endl; 
+#endif
+        if (n_reprojs < config::min_reproj_mps) {
+#ifdef _ME_VSLAM_DEBUG_INFO_
+            std::cout << "[SYSTEM]" << "Reprojected map points not enough." << std::endl; 
+#endif
+            new_frame->set_pose(_last->t_cw);
+            _quality = INSUFFICIENT;
+            return RELOCALIZING;
         }
 
         Sophus::SE3d refined_t_cr;
@@ -98,20 +127,41 @@ namespace vslam {
 
         double reproj_err = 0.0;
         singleframe_estimator::compute_inliers_and_reporj_err(
-            new_frame, refined_t_cr, 0.1/* read from config */, _inliers, _outliers, reproj_err
+            new_frame, refined_t_cr, config::max_reproj_err_xy1 * 4., _inliers, _outliers, reproj_err
         );
+#ifdef _ME_VSLAM_DEBUG_INFO_
+            std::cout << "[SYSTEM]" << "Inliers: " 
+                      << _inliers.size()  << std::endl; 
+#endif
 
         // for outliers, remove the association with the map point
         for (auto& each : _outliers) { each->reset_describing(); }
-
         // for inliers, local optimize the map point in the view of new frame
-        if (_inliers.size() < /*min_reproj_inliers*/90) {
-            // too few inliers
-            // TODO discard the pose estimation
-            return false;
+        if (_inliers.size() < config::min_inliers) {
+#ifdef _ME_VSLAM_DEBUG_INFO_
+            std::cout << "[SYSTEM]" << "Inliers not enough." << std::endl; 
+#endif
+            new_frame->set_pose(_last->t_cw);
+            _quality = INSUFFICIENT;
+            return RELOCALIZING;
+        }
+        if (_inliers.size() < _last->n_features) {
+            double drop_ratio = 
+                double(_last->n_features - _inliers.size()) / _last->n_features;
+            if (config::max_drop_ratio < drop_ratio) {
+#ifdef _ME_VSLAM_DEBUG_INFO_
+            std::cout << "[SYSTEM]" << "High drop ratio: " 
+                      << drop_ratio << std::endl; 
+#endif
+                new_frame->set_pose(_last->t_cw);
+                _quality = INSUFFICIENT;
+                return RELOCALIZING;
+            }
         }
 
-        auto nth = _inliers.begin() + /*max_mp_local_opt*/60;
+        _quality = GOOD;
+
+        auto nth = _inliers.begin() + config::max_mps_to_local_opt;
         std::nth_element(
             _inliers.begin(), nth, _inliers.end(), 
             [](const feature_ptr& a, const feature_ptr& b) { 
@@ -120,22 +170,27 @@ namespace vslam {
             }
         );
 
-        nth = _inliers.begin() + /*max_mp_local_opt*/60;
+        nth = _inliers.begin() + config::max_mps_to_local_opt;
         for (auto itr = _inliers.begin(); itr != nth; ++itr) {
-            (*itr)->map_point_describing->local_optimize(/* max_local_opt_iterations */10);
+            (*itr)->map_point_describing->local_optimize(config::max_opt_iterations);
             (*itr)->map_point_describing->last_opt = new_frame->id;
         }
 
-        assert(_inliers.size() <= _last->n_features);
-        size_t n_dropped = _last->n_features - _inliers.size();
+        _local_map.insert(new_frame);
 
-        if (/*max_kf_feat_dropped*/100 < n_dropped) {
-            new_frame->set_pose(_last->t_cw);
-            return false;
+        if (!_need_new_kf(new_frame)) {
+#ifdef _ME_VSLAM_DEBUG_INFO_
+            std::cout << "[SYSTEM]" << "Process default frame: " 
+                      << new_frame->id << std::endl;
+#endif
+            _depth_filter->commit(new_frame);
+            return TRACKING; 
         }
 
-        //min_and_median_depth_of_frame(new_frame, min, median);
-        if (!_need_new_kf()) { _depth_filter->commit(new_frame); return false; }
+#ifdef _ME_VSLAM_DEBUG_INFO_
+            std::cout << "[SYSTEM]" << "Process key frame: " 
+                      << new_frame->id << std::endl;
+#endif
 
         new_frame->as_key_frame();
         // set the latest observation 
@@ -143,24 +198,101 @@ namespace vslam {
             assert(each->map_point_describing->last_observation() == each);
         }
         _candidates.extract_observed_by(new_frame);
+
+        _build_local_map();
+        backend::local_map_ba ba(_local_map, config::max_reproj_err_xy1);
+        auto errs = ba.optimize(config::max_opt_iterations);
+#ifdef _ME_VSLAM_DEBUG_INFO_
+            std::cout << "[SYSTEM]" << "Error before BA: " << errs.first
+                                    << "Error after BA:  " << errs.second
+                      << std::endl;
+#endif        
+        ba.update();
+
         _depth_filter->commit(new_frame);
-
-        //TODO if there is too much key frames in the global map, try to reduce the map
         _reduce_map();
+        _map.add_key_frame(new_frame);
 
-        _map->add_key_frame(new_frame);
+        return TRACKING;
+    }
 
-        return true;
+    system::state_t 
+    system::relocalize(const frame_ptr& new_frame) {
+        frame_ptr closest = _map.find_closest_covisible_key_frame(new_frame);
+        if (!closest) { 
+#ifdef _ME_VSLAM_DEBUG_INFO_
+            std::cout << "[SYSTEM]" 
+                      << "Relocalize failed, failed to find the covisible key frames." 
+                      << std::endl;
+#endif
+            return RELOCALIZING;
+        }
+        Sophus::SE3d _last_pose = _last->t_cw;
+        _last = closest;
+
+        auto ret = track_frame(new_frame);
+        if (TRACKING == ret) {
+#ifdef _ME_VSLAM_DEBUG_INFO_
+            std::cout << "[SYSTEM]" << "Relocalize successfully." << std::endl;
+#endif
+        }
+        else { new_frame->set_pose(_last_pose); }
+        return ret;
     }
 
     frame_ptr system::_create_frame(const cv::Mat& raw_img, double timestamp) {
         return utils::mk_vptr<frame>(_camera, raw_img, timestamp);
     }
 
-    bool system::_need_new_kf() {
-        
+    void system::_df_callback(const map_point_ptr& new_mp, double cov2) {
+#ifdef _ME_VSLAM_DEBUG_INFO_
+        std::cout << "[SYSTEM]" << "Depth filter callback: " 
+                  << "a new map point created as a candidate." << std::endl; 
+        std::cout << "The cov2 of the candidate: " << cov2 << std::endl;               
+#endif
+        _candidates.add_candidate(new_mp);
     }
 
-    void system::_reduce_map() { }
+    bool system::_need_new_kf(const frame_ptr& frame) const {
+        double _, median; 
+        assert(vslam::min_and_median_depth_of_frame(frame, _, median));
+        for (auto& kf_overlap : _kfs_with_overlaps) {
+            Eigen::Vector3d xyz_kf = frame->t_cw * kf_overlap.first->cam_center();
+            Eigen::Vector3d xyz_kf_scale = xyz_kf / median;
+            if (xyz_kf_scale.x() < config::min_key_frame_shift_x || 
+                xyz_kf_scale.y() < config::min_key_frame_shift_y || 
+                xyz_kf_scale.z() < config::min_key_frame_shift_z) 
+            { return false; }
+        }
+        return true;
+    }
+
+    void system::_build_local_map() {
+        size_t n_frames = std::min(config::max_local_map_frames, (int) _kfs_with_overlaps.size()) - 1;
+        std::partial_sort(
+            _kfs_with_overlaps.begin(), 
+            _kfs_with_overlaps.begin() + n_frames, 
+            _kfs_with_overlaps.end(),
+            [](const frame_with_overlaps& a, const frame_with_overlaps& b) { return a.second > b.second; }
+        );
+        for (size_t i = 0; i < n_frames; ++i) {
+            _local_map.insert(_kfs_with_overlaps[i].first);
+        }
+    }
+
+    void system::_reduce_map() { 
+        //TODO if there is too much key frames in the global map, try to reduce the map
+        if (config::max_global_map_frames < _map.n_key_frames()) {
+
+        }
+    }
+
+    void system::_clear_cache() {
+        _local_map.clear();
+        _kfs_with_dis.clear();
+        _kfs_with_overlaps.clear();
+        _inliers.clear();
+        _outliers.clear();
+    }
 
 } // namespace vslam

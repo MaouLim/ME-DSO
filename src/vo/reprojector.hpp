@@ -11,12 +11,6 @@ namespace vslam {
      */ 
     struct reprojector {
 
-        static const size_t max_matches                  = 400;
-        static const size_t max_overlaped_kfs            = 20;
-        static const size_t max_candidate_mp_fail_reproj = 30;
-        static const size_t max_unknown_mp_fail_reproj   = 15;
-        static const size_t min_good_mp_success_reproj   = 10;
-
         size_t n_matches;
         size_t n_trials;
 

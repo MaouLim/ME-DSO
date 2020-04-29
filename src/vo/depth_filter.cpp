@@ -10,14 +10,15 @@
 
 namespace vslam {
 
-    const size_t depth_filter::max_queue_sz = 5;
-        //utils::config::get<int>("max_queue_sz");
-
-    const double depth_filter::min_corner_score = 0.1;
-        //utils::config::get<double>("min_corner_score");
-
-    const size_t depth_filter::max_seed_lifetime = 20;
-        //utils::config::get<int>("max_seed_lifetime");
+    depth_filter::depth_filter(const converged_callback& _cb) : 
+        base_type(max_queue_sz), 
+        _callback(_cb), _count_key_frames(0)
+    {
+        _detector = utils::mk_vptr<fast_detector>(
+            config::height, config::width, config::cell_sz, config::pyr_levels
+        );
+        add_handler(std::bind(&depth_filter::_handle_param, this, std::placeholders::_1));
+    }
 
     depth_filter::depth_filter(
         const detector_ptr& _det, const converged_callback& _cb
@@ -57,8 +58,10 @@ namespace vslam {
         
         feature_set features;
         _detector->set_grid_occupied(kf->features);
-        _detector->detect(kf, min_corner_score, features);
-
+        size_t n_seeds = _detector->detect(kf, config::min_corner_score, features);
+#ifdef _ME_VSLAM_DEBUG_INFO_
+        std::cout << "[DF]" << "Num of seeds created: " << n_seeds << std::endl;
+#endif
         double d_min = 0., d_median = 0.;
         min_and_median_depth_of_frame(kf, d_min,  d_median);
 
@@ -85,7 +88,7 @@ namespace vslam {
         const frame_ptr& cur, seed_iterator& itr
     ) {
         if (
-            max_seed_lifetime < _count_key_frames - itr->generation_id
+            config::max_seed_lifetime < _count_key_frames - itr->generation_id
         ) {
             itr = _seeds.erase(itr);
             return;

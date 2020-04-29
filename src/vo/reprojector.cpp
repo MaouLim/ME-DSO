@@ -55,7 +55,7 @@ namespace vslam {
 
         _shuffle();
         for (size_t i = 0; i < _grid.size(); ++i) {
-            if (max_matches <= n_matches) { break; }
+            if (config::max_mps_to_reproj <= n_matches) { break; }
             if (_find_match_in_cell(
                     frame, _grid[_indices[i]], candidates
                 )
@@ -91,10 +91,10 @@ namespace vslam {
         std::sort(kfs_with_dis.begin(), kfs_with_dis.end(), less_comp);
 
         size_t count_kfs = 0;
-        kfs_with_overlaps.reserve(max_overlaped_kfs);
+        kfs_with_overlaps.reserve(config::max_overlaped_key_frames);
 
         for (auto& kf_with_d : kfs_with_dis) {
-            if (max_overlaped_kfs < count_kfs) { break; }
+            if (config::max_overlaped_key_frames < count_kfs) { break; }
 
             const frame_ptr& kf = kf_with_d.first;
 
@@ -122,7 +122,7 @@ namespace vslam {
             if (!_reproject_mp(frame, candidate.first)) {
                 candidate.first->n_fail_reproj += 3;
             }
-            return max_candidate_mp_fail_reproj < candidate.first->n_fail_reproj;
+            return config::max_candidate_mp_fail_reproj < candidate.first->n_fail_reproj;
         };
         candidates.for_each_remove_if(elem_reproject);
         return true;
@@ -151,21 +151,21 @@ namespace vslam {
             if (!success) {
                 ++(mp->n_fail_reproj);
                 if (map_point::UNKNOWN == mp->type && 
-                    max_unknown_mp_fail_reproj < mp->n_fail_reproj) 
+                    config::max_unknown_mp_fail_reproj < mp->n_fail_reproj) 
                 {
                     mp->as_removed();
                 }
                 if (map_point::CANDIDATE == mp->type && 
-                    max_candidate_mp_fail_reproj < mp->n_fail_reproj)
+                    config::max_candidate_mp_fail_reproj < mp->n_fail_reproj)
                 {
-                    // slow!
                     candidates.remove_candidate(mp);
                 }
+                continue;
             }
 
             ++(mp->n_success_reproj);
             if (map_point::UNKNOWN == mp->type && 
-                min_good_mp_success_reproj < mp->n_success_reproj)
+                config::min_good_mp_success_reproj < mp->n_success_reproj)
             {
                 mp->type = map_point::GOOD;
             }

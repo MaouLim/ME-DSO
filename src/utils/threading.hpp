@@ -18,8 +18,8 @@ namespace utils {
         using param_type   = _Parameter;
         using handler_type = _Callable;
 
-        async_executor() = default;
-        explicit async_executor(size_t queue_sz) : _queue(queue_sz) { }
+        async_executor() : _running(false) { }
+        explicit async_executor(size_t queue_sz) : _running(false), _queue(queue_sz) { }
         virtual ~async_executor() { stop(); join(); }
 
         bool start();
@@ -44,7 +44,7 @@ namespace utils {
     >
     inline bool async_executor<_Parameter, _Callable>::start() {
         if (_running) { return false; }
-        _thread = std::thread(&_main_loop, this);
+        _thread = std::thread(&async_executor<_Parameter, _Callable>::_main_loop, this);
         _running = true;
         return true;
     }

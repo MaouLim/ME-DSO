@@ -141,7 +141,7 @@ namespace vslam {
                 itr = observations.erase(itr); --n_obs;
                 continue;
             }
-            pred(*itr);
+            pred((*itr).lock());
             ++itr;
         }
     }

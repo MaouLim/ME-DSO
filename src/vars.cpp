@@ -37,5 +37,26 @@ namespace config {
     const double max_angle_between_epi_grad = M_PI / 4;
     const double min_len_to_epipolar_search = 2.0;
     const double epipolar_search_step       = CONST_COS_45;
-    
+
+    /**
+     * @note constants for core system
+     */ 
+    const int    min_reproj_mps       = 200;
+    const int    max_mps_to_local_opt = 100;
+    const double max_drop_ratio       = 0.4;
+
+
+    const int    max_global_map_frames = 500;
+    const int    max_local_map_frames  = 10;
+    const double min_key_frame_shift_x = 0.3;
+    const double min_key_frame_shift_y = 0.25;
+    const double min_key_frame_shift_z = 0.4;
+
+    const int    max_seed_lifetime     = 10;
+
+    const int    max_mps_to_reproj            = 800;
+    const int    max_overlaped_key_frames     = 10;
+    const int    max_candidate_mp_fail_reproj = 30;
+    const int    max_unknown_mp_fail_reproj   = 15;
+    const int    min_good_mp_success_reproj   = 10;
 } // namespace config

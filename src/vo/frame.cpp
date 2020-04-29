@@ -127,8 +127,7 @@ namespace vslam {
             ) { candidate->as_good(); good_features[3] = candidate; return; }
         }
 
-        assert(center[0] >= candidate->uv[0] && center[1] < candidate->uv[1]);
-        {
+        if (center[0] >= candidate->uv[0] && center[1] < candidate->uv[1]) {
             if (
                 !good_features[4] || 
                     utils::distance_l1(good_features[4]->uv, center) < 
@@ -151,6 +150,7 @@ namespace vslam {
         zvec.reserve(n_feats);
 
         for (auto& each_feat : frame->features) {
+            if (each_feat->describe_nothing()) { continue; }
             double z = (frame->t_cw * each_feat->map_point_describing->position).z();
             zvec.push_back(z);
             min = std::min(min, z);
