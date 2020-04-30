@@ -79,6 +79,8 @@ int main(int argc, char** argv) {
         slam_sys.process_image(data.second, data.first);
         const auto& last_frame = slam_sys.last_frame();
         cv::Mat f_vis = draw_feats(last_frame);
+        // todo visualize the pose
+        // try to accelerate the depth_filter converging 
         cv::imshow("VIS", f_vis);
         cv::waitKey();
     }

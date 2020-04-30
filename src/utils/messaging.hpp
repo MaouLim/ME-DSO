@@ -8,32 +8,15 @@ namespace utils {
     /**
      * @brief message base type passed by message queue
      */ 
-    enum message_catagory { META, CONTROL, DATA };
 
+    template <typename _Catagory>
 	struct message_base {
+        using catagory_type = _Catagory;
+        using item_type     = typename catagory_type::item_type;
+        
 		virtual ~message_base() = default;
-		virtual message_catagory catagory() const { return DATA; }
+		virtual item_type catagory() const { return catagory_type::null(); }
 	};
-
-    struct stop_signal : message_base {
-        virtual ~stop_signal() = default;
-        message_catagory catagory() const override { return CONTROL; }
-    };
-
-    struct start_signal : message_base {
-        virtual ~start_signal() = default;
-        message_catagory catagory() const override { return CONTROL; }
-    };
-
-    struct pause_signal : message_base {
-        virtual ~pause_signal() = default;
-        message_catagory catagory() const override { return CONTROL; }
-    };
-
-	using message_queue = bounded_blocking_queue<
-		message_base,
-		std::deque<message_base>
-	>;
     
 } // namespace utils
 

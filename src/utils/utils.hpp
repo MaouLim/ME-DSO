@@ -366,7 +366,7 @@ namespace utils {
         Eigen::Vector3d f = p / p_norm;
         Eigen::Vector3d a = p - trans_cr;
         double alpha = std::acos(f.dot(trans_cr) / t_norm);
-        double beta  = std::acos(-a.dot(f) / (a.norm() * t_norm));
+        double beta  = std::acos(-a.dot(trans_cr) / (a.norm() * t_norm));
         double beta_plus = beta + 2.0 * atan(0.5 / focal_len);
         double gamma = M_PI - alpha - beta_plus;
         double p_plus_norm = t_norm * std::sin(beta_plus) / std::sin(gamma);

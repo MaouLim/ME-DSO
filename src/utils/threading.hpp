@@ -9,14 +9,22 @@
 
 namespace utils {
 
-    template <
-        typename _Parameter, 
-        typename _Callable = std::function<void(_Parameter&)>
-    >
     struct async_executor {
 
-        using param_type   = _Parameter;
-        using handler_type = _Callable;
+        struct task_catagory {
+
+            using item_type = int;
+
+            static constexpr item_type CTRL_STOP = 0;
+            static constexpr item_type NORMAL    = 1;
+
+            static item_type null() { return -1; }
+        };
+
+        using message_type  = message_base<task_catagory>;
+        using message_ptr   = std::shared_ptr<message_type>;
+        using message_queue = bounded_blocking_queue<message_ptr>;
+        using handler_type  = std::function<void(message_type&)>;
 
         async_executor() : _running(false) { }
         explicit async_executor(size_t queue_sz) : _running(false), _queue(queue_sz) { }
@@ -26,10 +34,26 @@ namespace utils {
         bool stop();
         bool join();
 
-        virtual bool commit(const param_type& param) { _queue.wait_and_push(param); return true; }
+        template <typename _MessageTypeDerived>
+        bool commit(const _MessageTypeDerived& msg);
+        template <typename _MessageTypeDerived>
+        bool commit(_MessageTypeDerived&& msg);
+
         void add_handler(handler_type&& handler) { _handlers.push_back(handler); }
 
     protected:
+
+        bool commit(const message_ptr& msg) { _queue.wait_and_push(msg); return true; }
+
+        struct _stop_signal : message_type {
+
+            _stop_signal() = default;
+            virtual ~_stop_signal() = default;
+
+            typename task_catagory::item_type 
+            catagory() const override { return task_catagory::CTRL_STOP; }
+        };
+
         bool                      _running;
         std::thread               _thread;
         message_queue             _queue;
@@ -39,47 +63,56 @@ namespace utils {
         void _main_loop();
     };
 
-    template <
-        typename _Parameter, typename _Callable
-    >
-    inline bool async_executor<_Parameter, _Callable>::start() {
+    inline bool async_executor::start() {
         if (_running) { return false; }
-        _thread = std::thread(&async_executor<_Parameter, _Callable>::_main_loop, this);
         _running = true;
+        _thread = std::thread(&async_executor::_main_loop, this);
         return true;
     }
 
-    template <
-        typename _Parameter, typename _Callable
-    >
-    inline bool async_executor<_Parameter, _Callable>::stop() {
+    inline bool async_executor::stop() {
         if (!_running) { return false; }
-        _queue.wait_and_push(stop_signal());
+        _running = false;
+        _queue.wait_and_push(std::make_shared<_stop_signal>());
+        return true;
+    }
+
+    inline bool async_executor::join() {
+        if (!_thread.joinable()) { return false; }
+        _thread.join();
         _running = false;
         return true;
     }
 
-    template <
-        typename _Parameter, typename _Callable
-    >
-    inline bool async_executor<_Parameter, _Callable>::join() {
-        if (!_thread.joinable()) { return false; }
-        _thread.join();
+    template <typename _MessageTypeDerived>
+    inline bool async_executor::commit(const _MessageTypeDerived& msg) {
+        static_assert(
+            std::is_same   <message_type, _MessageTypeDerived>::value || 
+            std::is_base_of<message_type, _MessageTypeDerived>::value
+        );
+        auto ptr = std::make_shared<_MessageTypeDerived>(msg);
+        _queue.wait_and_push(ptr);
         return true;
     }
 
-    template <
-        typename _Parameter, typename _Callable
-    >
-    inline void async_executor<_Parameter, _Callable>::_main_loop() {
+    template <typename _MessageTypeDerived>
+    bool async_executor::commit(_MessageTypeDerived&& msg) {
+        static_assert(
+            std::is_same   <message_type, _MessageTypeDerived>::value || 
+            std::is_base_of<message_type, _MessageTypeDerived>::value
+        );
+        auto ptr = std::make_shared<_MessageTypeDerived>(std::move(msg));
+        _queue.wait_and_push(ptr);
+        return true;
+    }
+
+    inline void async_executor::_main_loop() {
 
         while (_running) {
             auto msg_ptr = _queue.wait_and_pop();
-            stop_signal* stop = dynamic_cast<stop_signal*>(msg_ptr.get());
-            if (!stop) { break; }
-            param_type* param = dynamic_cast<param_type*>(msg_ptr.get());
+            if (task_catagory::CTRL_STOP == msg_ptr->catagory()) { _running = false; break; }
             for (auto& func_call : _handlers) {
-                func_call(*param);
+                func_call(*msg_ptr);
             }
         }
 

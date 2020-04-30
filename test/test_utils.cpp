@@ -35,5 +35,22 @@ int main(int argc, char** argv) {
         std::cout << "insert 7 : " << *ret.first << ", " << ret.second << std::endl;
     }
     
+    /**
+     * @brief test calc_depth_cov
+     */ 
+    {
+        Eigen::Vector3d xyz = {
+            -0.22364371963846993, 0.36487313637321739, 0.89613397497273795
+        };
+
+        Eigen::Vector3d trans = {
+            -0.0023678912818245719, 0.005247017625799915, -0.0084210397622856425
+        };
+
+        double focal = 517.3;
+        double tau = utils::calc_depth_cov(xyz, trans, focal);
+        std::cout << tau << std::endl;
+    }
+
     return 0;
 }

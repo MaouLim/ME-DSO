@@ -17,7 +17,8 @@ namespace vslam {
         _detector = utils::mk_vptr<fast_detector>(
             config::height, config::width, config::cell_sz, config::pyr_levels
         );
-        add_handler(std::bind(&depth_filter::_handle_param, this, std::placeholders::_1));
+        add_handler(std::bind(&depth_filter::_handle_message, this, std::placeholders::_1));
+        _matcher = utils::mk_vptr<patch_matcher>(true);
     }
 
     depth_filter::depth_filter(
@@ -25,33 +26,38 @@ namespace vslam {
     ) : base_type(max_queue_sz), 
         _detector(_det), _callback(_cb), _count_key_frames(0) 
     { 
-        add_handler(std::bind(&depth_filter::_handle_param, this, std::placeholders::_1));
+        add_handler(std::bind(&depth_filter::_handle_message, this, std::placeholders::_1));
+        _matcher = utils::mk_vptr<patch_matcher>(true);
     }
 
-    bool depth_filter::commit(const param_type& param) {
-        if (param.frame->key_frame) {
+    bool depth_filter::commit(const message_ptr& msg) {
+        auto frame_msg = dynamic_cast<_df_frame_msg*>(msg.get());
+        assert(frame_msg);
+        if (frame_msg->frame->key_frame) {
             _new_key_frame.do_and_exchange_if(false, [&]() {
-                _queue.force_to_push(param);
+                _queue.force_to_push(msg);
             });
         }
         else { 
             _new_key_frame.do_if_else(
                 true, 
-                [&]() { _queue.wait_and_push(param); },
-                [&]() { _queue.force_to_push(param); }
+                [&]() { _queue.wait_and_push(msg); },
+                [&]() { _queue.force_to_push(msg); }
             );
         }
         return true;
     }
 
-    void depth_filter::_handle_param(param_type& param) {
-        if (param.frame->key_frame) {
+    void depth_filter::_handle_message(message_type& msg) {
+        assert(task_catagory::NORMAL == msg.catagory());
+        const auto& frame = ((_df_frame_msg&) msg).frame;
+        if (frame->key_frame) {
             _queue.clear();
-            _initialize_seeds(param.frame);
+            _initialize_seeds(frame);
             _new_key_frame.reset();
             ++_count_key_frames;
         }
-        _update_seeds(param.frame);
+        _update_seeds(frame);
     }
 
     void depth_filter::_initialize_seeds(const frame_ptr& kf) {
