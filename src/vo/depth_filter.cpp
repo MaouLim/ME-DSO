@@ -70,10 +70,28 @@ namespace vslam {
 #endif
         double d_min = 0., d_median = 0.;
         min_and_median_depth_of_frame(kf, d_min,  d_median);
-
+#ifdef _ME_VSLAM_DEBUG_INFO_
+        std::cout << "[DF]" << "d_min: "    << d_min    << ", "
+                            << "d_median: " << d_median << std::endl;
+        {
+            cv::Mat img;
+            cv::cvtColor(kf->image(), img, cv::COLOR_GRAY2BGR);
+            for (const auto& each_feat : features) {
+                cv::Point2f c(each_feat->uv.x(), each_feat->uv.y());
+                cv::circle(img, c, 2, { 0, 0, 255 });
+            }
+            cv::imshow("features", img);
+            cv::waitKey();
+        }
+#endif
         lock_t lock(_mutex_seeds);
         for (const auto& each_feat : features) {
             _seeds.emplace_back(_count_key_frames, each_feat, d_median, d_min);
+#ifdef _ME_VSLAM_DEBUG_INFO_
+            const auto& s = _seeds.back();
+            std::cout << "[DF]" << "New seed: "
+                      << s.a << ", " << s.b << ", " << s.mu << ", " << s.sigma2 << s.dinv_range << std::endl;
+#endif
         }
     }
 
@@ -117,10 +135,18 @@ namespace vslam {
                 1. / dinv_max, 1. / dinv_min,  depth_est
             )
         ) {
+#ifdef _ME_VSLAM_DEBUG_INFO_
+        std::cout << "[DF]" << "Epipolar search falied." << std::endl;
+        std::cout << "dinv_max:  " << dinv_max << ", "
+                  << "dinv_min:  " << dinv_min << ", "
+                  << "depth_est: " << depth_est << std::endl;
+#endif
             itr->b += 1.; ++itr;
             return;
         }
-
+#ifdef _ME_VSLAM_DEBUG_INFO_
+        std::cout << "[DF]" << "Epipolar search successfully." << std::endl;
+#endif
         double focal_len = cur->camera->err_mul2();
         Eigen::Vector3d trans_cr = (ref->t_cw * cur->t_wc /* t_rc */).translation();
         // tau: depth uncertainty

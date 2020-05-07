@@ -92,3 +92,6 @@ target_link_libraries(InitializerV1Test g2o_core g2o_stuff ${PCL_LIBRARIES} ${Op
 
 add_executable(FeatureAlignmentTest test/test_feature_alignment.cpp)
 target_link_libraries(FeatureAlignmentTest ${OpenCV_LIBS} vslam)
+
+add_executable(DepthFilterTest test/test_depth_filter.cpp)
+target_link_libraries(DepthFilterTest ${OpenCV_LIBS} vslam pthread)
