@@ -30,8 +30,8 @@ namespace vslam {
     reprojector::reprojector(
         int height, int width, int cell_sz
     ) : n_matches(0), n_trials(0), _cell_sz(cell_sz), 
-        _rows(std::ceil(double(height) / _cell_sz)), 
-        _cols(std::ceil(double(width)  / _cell_sz))
+        _rows(std::ceil(double(height) / cell_sz)), 
+        _cols(std::ceil(double(width)  / cell_sz))
     {
         const int n_cells =  _rows * _cols;
         _grid.resize(n_cells);

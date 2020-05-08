@@ -124,6 +124,7 @@ namespace vslam {
 
         Sophus::SE3d refined_t_cr;
         _sf_estimator->estimate(new_frame, refined_t_cr);
+        //refined_t_cr = new_frame->t_cw;
 
         double reproj_err = 0.0;
         singleframe_estimator::compute_inliers_and_reporj_err(

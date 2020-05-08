@@ -214,6 +214,7 @@ namespace config {
     extern const double init_scale;
 
     extern const double min_corner_score;
+    extern const double seed_converged_ratio;
 
     extern const double min_epipolar_search_ncc;   
     extern const int    max_epipolar_search_steps; 

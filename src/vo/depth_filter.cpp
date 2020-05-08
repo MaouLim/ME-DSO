@@ -87,11 +87,11 @@ namespace vslam {
         lock_t lock(_mutex_seeds);
         for (const auto& each_feat : features) {
             _seeds.emplace_back(_count_key_frames, each_feat, d_median, d_min);
-#ifdef _ME_VSLAM_DEBUG_INFO_
-            const auto& s = _seeds.back();
-            std::cout << "[DF]" << "New seed: "
-                      << s.a << ", " << s.b << ", " << s.mu << ", " << s.sigma2 << s.dinv_range << std::endl;
-#endif
+// #ifdef _ME_VSLAM_DEBUG_INFO_
+//             const auto& s = _seeds.back();
+//             std::cout << "[DF]" << "New seed: "
+//                       << s.a << ", " << s.b << ", " << s.mu << ", " << s.sigma2 << s.dinv_range << std::endl;
+// #endif
         }
     }
 
@@ -136,16 +136,16 @@ namespace vslam {
             )
         ) {
 #ifdef _ME_VSLAM_DEBUG_INFO_
-        std::cout << "[DF]" << "Epipolar search falied." << std::endl;
-        std::cout << "dinv_max:  " << dinv_max << ", "
-                  << "dinv_min:  " << dinv_min << ", "
-                  << "depth_est: " << depth_est << std::endl;
+        // std::cout << "[DF]" << "Epipolar search falied." << std::endl;
+        // std::cout << "dinv_max:  " << dinv_max << ", "
+        //           << "dinv_min:  " << dinv_min << ", "
+        //           << "depth_est: " << depth_est << std::endl;
 #endif
             itr->b += 1.; ++itr;
             return;
         }
 #ifdef _ME_VSLAM_DEBUG_INFO_
-        std::cout << "[DF]" << "Epipolar search successfully." << std::endl;
+        //std::cout << "[DF]" << "Epipolar search successfully." << std::endl;
 #endif
         double focal_len = cur->camera->err_mul2();
         Eigen::Vector3d trans_cr = (ref->t_cw * cur->t_wc /* t_rc */).translation();
@@ -160,6 +160,12 @@ namespace vslam {
         if (cur->key_frame) {
             _detector->set_grid_occupied(uv_matched);
         }
+
+#ifdef _ME_VSLAM_DEBUG_INFO_
+        // std::cout << "[DF]" 
+        //           << "stddev sigma: " << std::sqrt(itr->sigma2) << ", "
+        //           << "thresh: " << config::seed_converged_ratio * itr->dinv_range << std::endl;
+#endif        
 
         if (itr->converged()) {
             map_point_ptr new_mp = itr->upgrade(ref->t_wc);

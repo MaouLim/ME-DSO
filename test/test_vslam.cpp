@@ -54,9 +54,18 @@ cv::Mat draw_feats(const vslam::frame_ptr& f) {
 
     cv::Mat f_img;
     cv::cvtColor(f->image(), f_img, cv::COLOR_GRAY2BGR);
+    size_t count = 0;
     for (auto& feat : f->features) {
-        cv::circle(f_img, cv::Point2f{ feat->uv.x(), feat->uv.y() }, 2, color[feat->level]);
+        if (!feat->describe_nothing()) { 
+            ++count; 
+            cv::circle(f_img, cv::Point2f{ feat->uv.x(), feat->uv.y() }, 2, color[feat->level]);
+        }
+        else {
+            cv::circle(f_img, cv::Point2f{ feat->uv.x(), feat->uv.y() }, 2, { 255, 155, 0 });
+        }
     }
+    std::cout << "Num of features: " << f->n_features << std::endl;
+    std::cout << "Num of desc features: " << count << std::endl;
 
     return f_img;
 }

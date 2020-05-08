@@ -7,11 +7,9 @@ namespace vslam {
 
     struct frame {
 
-        static const size_t N_GOOD_FEATURES = 5;
+        static constexpr size_t N_GOOD_FEATURES = 5;
 
         using good_features_t = std::array<feature_ptr, N_GOOD_FEATURES>;
-
-        static size_t pyr_levels;
 
         bool                   key_frame;
         int                    id;

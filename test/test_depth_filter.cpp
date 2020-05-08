@@ -153,9 +153,6 @@ int main(int argc, char** argv) {
         }
         filter.commit(f);
         all_frames.push_back(f);
-
-        cv::imshow("frame", f->image());
-        cv::waitKey();
     }
 
     return 0;

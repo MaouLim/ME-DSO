@@ -11,7 +11,6 @@
 namespace vslam {
 
     int    frame::_seq_id    = 0;
-    size_t frame::pyr_levels = 5;//utils::config::get<int>("pyr_levels");
 
     frame::frame(
         const camera_ptr& _cam, 
@@ -26,7 +25,7 @@ namespace vslam {
         for (auto& each : good_features) {
             each = feature_ptr(nullptr);
         }
-        pyramid = utils::create_pyramid(_img, pyr_levels);
+        pyramid = utils::create_pyramid(_img, config::pyr_levels);
     }
 
     bool frame::visible(

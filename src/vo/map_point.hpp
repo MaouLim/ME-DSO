@@ -7,8 +7,6 @@ namespace vslam {
 
     struct map_point_seed {
 
-        static constexpr double conveged_ratio = 0.005;
-
         int         id;
         int         generation_id;
         int         count_updates;
@@ -25,7 +23,7 @@ namespace vslam {
         map_point_seed(int _gen_id, const feature_ptr& host, double d_mu, double d_min);
         ~map_point_seed();
 
-        bool converged(double ratio = conveged_ratio) const { return std::sqrt(sigma2) < ratio * dinv_range; }
+        bool converged(double ratio = config::seed_converged_ratio) const { return std::sqrt(sigma2) < ratio * dinv_range; }
 
         /**
          * @brief upgrade a converged seed to a map point
