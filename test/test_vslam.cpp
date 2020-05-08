@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
         // todo visualize the pose
         // try to accelerate the depth_filter converging 
         cv::imshow("VIS", f_vis);
-        cv::waitKey();
+        cv::waitKey(60);
     }
     slam_sys.shutdown();
     return 0;

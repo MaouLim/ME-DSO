@@ -185,6 +185,11 @@ namespace vslam {
                       << new_frame->id << std::endl;
 #endif
             _depth_filter->commit(new_frame);
+            size_t n_extracts = _candidates.extract_observed_by(new_frame);
+#ifdef _ME_VSLAM_DEBUG_INFO_
+            std::cout << "[SYSTEM]" << "Extract candidates: " 
+                      << n_extracts << std::endl;
+#endif
             return TRACKING; 
         }
 
@@ -247,9 +252,9 @@ namespace vslam {
 
     void system::_df_callback(const map_point_ptr& new_mp, double cov2) {
 #ifdef _ME_VSLAM_DEBUG_INFO_
-        std::cout << "[SYSTEM]" << "Depth filter callback: " 
-                  << "a new map point created as a candidate." << std::endl; 
-        std::cout << "The cov2 of the candidate: " << cov2 << std::endl;               
+        // std::cout << "[SYSTEM]" << "Depth filter callback: " 
+        //           << "a new map point created as a candidate." << std::endl; 
+        // std::cout << "The cov2 of the candidate: " << cov2 << std::endl;               
 #endif
         _candidates.add_candidate(new_mp);
     }

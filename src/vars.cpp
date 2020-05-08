@@ -26,7 +26,7 @@ namespace config {
     const int    min_features_to_tracked = 250;
     const double min_init_shift          = 30.0;
     const int    min_inliers             = 100;
-    const double min_inlier_ratio        = 0.75;
+    const double min_inlier_ratio        = 0.2;
     const int    cv_lk_win_sz            = 21;
     const double init_scale              = 1.0;
  
@@ -44,14 +44,14 @@ namespace config {
      */ 
     const int    min_reproj_mps       = 200;
     const int    max_mps_to_local_opt = 100;
-    const double max_drop_ratio       = 0.4;
+    const double max_drop_ratio       = 0.8;
 
 
     const int    max_global_map_frames = 500;
     const int    max_local_map_frames  = 10;
-    const double min_key_frame_shift_x = 0.3;
-    const double min_key_frame_shift_y = 0.25;
-    const double min_key_frame_shift_z = 0.4;
+    const double min_key_frame_shift_x = 0.1;
+    const double min_key_frame_shift_y = 0.08;
+    const double min_key_frame_shift_z = 0.15;
 
     const int    max_seed_lifetime     = 10;
 

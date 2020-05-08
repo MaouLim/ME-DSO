@@ -185,7 +185,7 @@ namespace vslam {
          *       the feature associated will be extracted to the its 
          *       host frame, then the candidate will be removed
          */ 
-        bool extract_observed_by(const frame_ptr& frame);
+        size_t extract_observed_by(const frame_ptr& frame);
 
         /**
          * @brief remove the candidates which the feature of the candidate

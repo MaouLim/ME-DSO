@@ -281,8 +281,9 @@ namespace vslam {
         return false;
     }
 
-    bool candidate_set::extract_observed_by(const frame_ptr& frame) {
+    size_t candidate_set::extract_observed_by(const frame_ptr& frame) {
         lock_t lock(_mutex_c);
+        size_t count = 0;
         auto itr = _candidates.begin();
         while (_candidates.end() != itr) {
             auto host = itr->first->last_observation()->host_frame;
@@ -292,10 +293,11 @@ namespace vslam {
                 itr->first->n_fail_reproj = 0;
                 itr->second->use();
                 itr = _candidates.erase(itr);
+                ++count;
             }
             else { ++itr; }
         }
-        return true;
+        return count;
     }
 
     void candidate_set::remove_observed_by(const frame_ptr& frame) {

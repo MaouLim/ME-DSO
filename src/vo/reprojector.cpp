@@ -160,7 +160,7 @@ namespace vslam {
                 {
                     candidates.remove_candidate(mp);
                 }
-                continue;
+                ++itr; continue;
             }
 
             ++(mp->n_success_reproj);
