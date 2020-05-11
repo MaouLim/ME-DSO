@@ -248,7 +248,7 @@ namespace vslam {
         std::vector<float> error;
         cv::TermCriteria criteria(
             cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 
-            config::max_opt_iterations, CONST_EPS
+            config::max_opt_iterations, config::opt_converged_thresh_lk
         );
 
         // copy _uvs_ref to _uvs_cur as the initial estimation

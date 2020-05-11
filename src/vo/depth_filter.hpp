@@ -18,7 +18,7 @@ namespace vslam {
         using converged_callback = std::function<void(const map_point_ptr&, double)>;
         using lock_t             = std::lock_guard<std::mutex>;
 
-        static constexpr size_t max_queue_sz = 5;
+        static constexpr size_t max_queue_sz = 10;
 
         explicit depth_filter(const converged_callback& _cb);
         depth_filter(const detector_ptr& _det, const converged_callback& _cb);

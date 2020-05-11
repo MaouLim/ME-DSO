@@ -205,15 +205,15 @@ namespace vslam {
         }
         _candidates.extract_observed_by(new_frame);
 
-        _build_local_map();
-        backend::local_map_ba ba(_local_map, config::max_reproj_err_xy1);
-        auto errs = ba.optimize(config::max_opt_iterations);
-#ifdef _ME_VSLAM_DEBUG_INFO_
-            std::cout << "[SYSTEM]" << "Error before BA: " << errs.first
-                                    << "Error after BA:  " << errs.second
-                      << std::endl;
-#endif        
-        ba.update();
+//         _build_local_map();
+//         backend::local_map_ba ba(_local_map, config::max_reproj_err_xy1);
+//         auto errs = ba.optimize(config::max_opt_iterations);
+// #ifdef _ME_VSLAM_DEBUG_INFO_
+//             std::cout << "[SYSTEM]" << "Error before BA: " << errs.first
+//                                     << "Error after BA:  " << errs.second
+//                       << std::endl;
+// #endif        
+//         ba.update();
 
         _depth_filter->commit(new_frame);
         _reduce_map();
@@ -264,11 +264,13 @@ namespace vslam {
         assert(vslam::min_and_median_depth_of_frame(frame, _, median));
         for (auto& kf_overlap : _kfs_with_overlaps) {
             Eigen::Vector3d xyz_kf = frame->t_cw * kf_overlap.first->cam_center();
-            Eigen::Vector3d xyz_kf_scale = xyz_kf / median;
+            Eigen::Vector3d xyz_kf_scale = (xyz_kf / median).array().abs();
             if (xyz_kf_scale.x() < config::min_key_frame_shift_x || 
                 xyz_kf_scale.y() < config::min_key_frame_shift_y || 
                 xyz_kf_scale.z() < config::min_key_frame_shift_z) 
-            { return false; }
+            { 
+                return false; 
+            }
         }
         return true;
     }

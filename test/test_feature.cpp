@@ -12,7 +12,7 @@ int main(int argc, char** argv) {
     assert(img_ref.data && img_cur.data);
 
     vslam::detector_ptr detector 
-        = utils::mk_vptr<vslam::fast_detector>(480, 640, 10, 5);
+        = utils::mk_vptr<vslam::gftt_detector>(480, 640, 10, 5, 200);
     vslam::camera_ptr cam = 
         utils::mk_vptr<vslam::pinhole_camera>(480, 640, 517.3, 516.5, 325.1, 249.7);
 

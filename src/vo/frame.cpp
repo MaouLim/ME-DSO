@@ -154,8 +154,9 @@ namespace vslam {
             zvec.push_back(z);
             min = std::min(min, z);
         }
+        if (zvec.empty()) { return false; }
 
-        auto median_itr = zvec.begin() + size_t((n_feats - 1) / 2);
+        auto median_itr = zvec.begin() + size_t((zvec.size() - 1) / 2);
         std::nth_element(zvec.begin(), median_itr, zvec.end());
         median = *median_itr;
 

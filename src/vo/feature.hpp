@@ -165,6 +165,22 @@ namespace vslam {
     inline fast_detector::fast_detector(int _h, int _w, int _cell_sz, size_t _n_levels) : 
         abstract_detector(_h, _w, _cell_sz, _n_levels) { }
 
+    struct gftt_detector : abstract_detector {
+
+        gftt_detector(int _h, int _w, int _cell_sz, size_t _n_levels, size_t max_feats_0);
+        virtual ~gftt_detector() = default;
+
+        size_t detect(frame_ptr host, double threshold, feature_set& features) override;
+
+    private:
+        size_t _max_feats_lvl0;
+    };
+
+    inline gftt_detector::gftt_detector(
+        int _h, int _w, int _cell_sz, size_t _n_levels, size_t max_feats_0
+    ) : abstract_detector(_h, _w, _cell_sz, _n_levels), _max_feats_lvl0(max_feats_0) { }
+
+
 }
 
 #endif

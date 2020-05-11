@@ -69,7 +69,7 @@ namespace vslam {
         std::cout << "[DF]" << "Num of seeds created: " << n_seeds << std::endl;
 #endif
         double d_min = 0., d_median = 0.;
-        min_and_median_depth_of_frame(kf, d_min,  d_median);
+        assert(min_and_median_depth_of_frame(kf, d_min,  d_median));
 #ifdef _ME_VSLAM_DEBUG_INFO_
         std::cout << "[DF]" << "d_min: "    << d_min    << ", "
                             << "d_median: " << d_median << std::endl;
@@ -81,17 +81,16 @@ namespace vslam {
                 cv::circle(img, c, 2, { 0, 0, 255 });
             }
             cv::imshow("features", img);
-            cv::waitKey();
         }
 #endif
         lock_t lock(_mutex_seeds);
         for (const auto& each_feat : features) {
             _seeds.emplace_back(_count_key_frames, each_feat, d_median, d_min);
-// #ifdef _ME_VSLAM_DEBUG_INFO_
-//             const auto& s = _seeds.back();
-//             std::cout << "[DF]" << "New seed: "
-//                       << s.a << ", " << s.b << ", " << s.mu << ", " << s.sigma2 << s.dinv_range << std::endl;
-// #endif
+#ifdef _ME_VSLAM_DEBUG_INFO_
+            const auto& s = _seeds.back();
+            std::cout << "[DF]" << "New seed: "
+                      << s.a << ", " << s.b << ", " << s.mu << ", " << s.sigma2 << s.dinv_range << std::endl;
+#endif
         }
     }
 
@@ -132,7 +131,7 @@ namespace vslam {
         Eigen::Vector2d uv_matched;
         if (!_matcher->match_epipolar_search(
                 ref, cur, itr->host_feature,
-                1. / dinv_max, 1. / dinv_min,  depth_est
+                1. / dinv_max, 1. / dinv_min,  depth_est, uv_matched
             )
         ) {
 #ifdef _ME_VSLAM_DEBUG_INFO_

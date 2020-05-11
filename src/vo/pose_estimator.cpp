@@ -111,7 +111,7 @@ namespace icia {
 	    		last_t_cr = t_cr;
 
                 t_cr = t_cr * Sophus::SE3d::exp(-update);
-                if (update.norm() < CONST_EPS) {
+                if (update.norm() < config::opt_converged_thresh_eps) {
 #ifdef _ME_VSLAM_DEBUG_INFO_OPT_
 	    			std::cout << "[TF_EST]" << "Converged at " << itr << std::endl;
 #endif     
@@ -532,7 +532,7 @@ namespace fcfa {
 	    		last_t_cr = t_cr;
 	    		t_cr = Sophus::SE3d::exp(update) * t_cr;
 
-                if (update.norm() < CONST_EPS) {
+                if (update.norm() < config::opt_converged_thresh_eps) {
 #ifdef _ME_VSLAM_DEBUG_INFO_OPT_
 	    			std::cout << "[TF_EST]" << "Converged at " << itr << std::endl;
 #endif  
@@ -644,7 +644,7 @@ namespace pnp {
 
                 t_cw = Sophus::SE3d::exp(delta) * t_cw;
 
-                if (delta.norm() < CONST_EPS) { 
+                if (delta.norm() < config::opt_converged_thresh_eps) { 
 #ifdef _ME_VSLAM_DEBUG_INFO_
                     std::cout << "[SF_EST]" << "Converged at " << itr << std::endl;
 #endif

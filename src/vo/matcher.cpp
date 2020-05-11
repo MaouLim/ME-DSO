@@ -87,7 +87,8 @@ namespace vslam {
         const feature_ptr& feat_ref,
         double             depth_min,
         double             depth_max,
-        double&            depth_est
+        double&            depth_est,
+        Eigen::Vector2d&   uv_macthed
     ) {
         Sophus::SE3d t_cr = cur->t_cw * ref->t_wc;
         //double best_zmssd = 1e10 /* threshold */;
@@ -148,10 +149,13 @@ namespace vslam {
             if (!success) { return false; }
             uv_cur = uv_leveln_cur * scale;
             double depth_cur = 0.;
-            return utils::depth_from_triangulate_v2(
+            bool ret = utils::depth_from_triangulate_v2(
                 cur->camera->pixel2cam_unit(uv_cur), 
                 xyz_unit_ref, t_cr, depth_cur, depth_est
             );
+
+            if (ret) { uv_macthed = uv_cur; }
+            return ret;
         }
 
         size_t n_steps = epipolar_pixel_len / config::epipolar_search_step;
@@ -252,10 +256,12 @@ namespace vslam {
         if (!success) { return false; }
         Eigen::Vector2d uv_refined = best_uv_leveln * scale;
         double depth_cur = 0.;
-        return utils::depth_from_triangulate_v2(
+        bool ret = utils::depth_from_triangulate_v2(
             cur->camera->pixel2cam_unit(uv_refined), 
             xyz_unit_ref, t_cr, depth_cur, depth_est
         );
+        if (ret) { uv_macthed = uv_refined; }
+        return ret;
     }
     
     Eigen::Matrix2d affine::affine_mat(
@@ -435,7 +441,7 @@ namespace vslam {
             v -= delta[0] * search_dir[1];
             intensity_mean_diff -= delta[1];
 
-            if (std::abs(delta[0]) < align_converge_thresh) {
+            if (std::abs(delta[0]) < config::opt_converged_thresh_uv) {
 #ifdef _ME_VSLAM_DEBUG_INFO_OPT_
                 std::cout << "[ALIGN1D]" << "Converged at " << i << std::endl;
 #endif
@@ -550,7 +556,7 @@ namespace vslam {
             v -= delta[1];
             intensity_mean_diff -= delta[2];
 
-            if (delta.head<2>().norm() < align_converge_thresh) {
+            if (delta.head<2>().norm() < config::opt_converged_thresh_uv) {
 #ifdef _ME_VSLAM_DEBUG_INFO_OPT_
                 std::cout << "[ALIGN2D]" << "Converged at " << i << std::endl;
 #endif

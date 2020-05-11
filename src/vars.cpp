@@ -15,9 +15,13 @@ namespace config {
     const double k2                      = 0.0;
     const double k3                      = 0.0;
 
-    const int    pyr_levels              = 5;
-    const int    cell_sz                 = 10;
-    const int    max_opt_iterations      = 10;
+    const int    pyr_levels               = 5;
+    const int    cell_sz                  = 10;
+    const int    max_opt_iterations       = 10;
+    const double opt_converged_thresh_lk  = 1e-4;
+    const double opt_converged_thresh_uv  = 3e-2;
+    const double opt_converged_thresh_xyz = 1e-5;
+    const double opt_converged_thresh_eps = 1e-6;
 
     const double max_reproj_err_uv       = 0.4;
     const double max_reproj_err_xy1      = max_reproj_err_uv * 2. / (fx + fy);
@@ -49,9 +53,9 @@ namespace config {
 
     const int    max_global_map_frames = 500;
     const int    max_local_map_frames  = 10;
-    const double min_key_frame_shift_x = 0.1;
-    const double min_key_frame_shift_y = 0.08;
-    const double min_key_frame_shift_z = 0.15;
+    const double min_key_frame_shift_x = 0.01;
+    const double min_key_frame_shift_y = 0.006;
+    const double min_key_frame_shift_z = 0.015;
 
     const int    max_seed_lifetime     = 10;
 

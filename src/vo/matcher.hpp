@@ -36,14 +36,15 @@ namespace vslam {
          * @brief find the matched feature (on cur frame) using searching along 
          *        the epipolar and estimate the depth of the point described by
          *        the feature on the ref frame
-         * @param ref       reference frame
-         * @param cur       current frame
-         * @param feat_ref  feature on the reference frame
-         * @param depth_min lower-bound of the depth estimation
-         * @param depth_max upper-bound of the depth estimation
-         * @param depth_est initial depth estimation of the feat_ref, if the
-         *                  function return true, depth_est will be replace by
-         *                  the lastest estimation
+         * @param ref        reference frame
+         * @param cur        current frame
+         * @param feat_ref   feature on the reference frame
+         * @param depth_min  lower-bound of the depth estimation
+         * @param depth_max  upper-bound of the depth estimation
+         * @param depth_est  initial depth estimation of the feat_ref, if the
+         *                   function return true, depth_est will be replace by
+         *                   the lastest estimation
+         * @param uv_macthed matched uv coordinate of feature on the current frame
          * @return whether the match is found
          */
         bool match_epipolar_search(
@@ -52,7 +53,8 @@ namespace vslam {
             const feature_ptr& feat_ref,
             double             depth_min,
             double             depth_max,
-            double&            depth_est
+            double&            depth_est,
+            Eigen::Vector2d&   uv_macthed
         );
     
     private:
@@ -109,8 +111,6 @@ namespace vslam {
     }
 
     struct alignment {
-
-        static constexpr double align_converge_thresh = 3e-2;
         
         /**
          * @brief using ICIA to align the feature along the indicted direction 

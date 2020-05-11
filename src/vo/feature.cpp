@@ -141,7 +141,7 @@ namespace vslam {
 
                 float score = utils::shi_tomasi_score(pyramid[i], xy.x, xy.y);
                 if (corners[index].score < score) {
-                    corners[index] = corner(xy.x, xy.y, i, score, 0.); 
+                    corners[index] = corner(xy.x, xy.y, i, score, 0.);
                 }
             }
         }
@@ -152,6 +152,58 @@ namespace vslam {
             features.emplace_front(new feature(host, Eigen::Vector2d(each.x, each.y) * (1 << each.level), each.level));
             ++count;
         }
+        reset();
+        return count;
+    }
+
+    size_t gftt_detector::detect(frame_ptr host, double threshold, feature_set& features) {
+
+        const auto& pyramid  = host->pyramid;
+        assert(pyr_levels == pyramid.size());
+
+        const cv::Mat& img_0 = pyramid.front();
+
+        std::vector<cv::Point2f> uvs;
+
+        cv::Mat mask = cv::Mat::ones(img_0.size(), img_0.type());
+        for (size_t r = 0; r < mask.rows; ++r) {
+            for (size_t c = 0; c < mask.cols; ++c) {
+                if (grid_occupied[cell_index({ c, r }, 0)]) {
+                    mask.at<uint8_t>(r, c) = 0;
+                }
+            }
+        }
+
+        size_t count = 0;
+
+        for (size_t i = 0; i < pyramid.size(); ++i) {
+
+            const cv::Mat& img_n = pyramid[i];
+            const double scale = (1 << i);
+            uvs.clear();
+
+            cv::goodFeaturesToTrack(img_n, uvs, _max_feats_lvl0 / scale, 0.02, 16 / scale, mask, 3);
+
+	        for (auto& uv : uvs) {
+                if (!utils::in_image(img_n, uv.x, uv.y, 4)) { continue; }
+
+		        const int half_block_sz = 3 * i + 5;
+		        for (int r = -half_block_sz; r < half_block_sz; ++r) {
+		        	for (int c = -half_block_sz; c < half_block_sz; ++c) {
+		        		int row = uv.y + r, col = uv.x + c;
+                        if (utils::in_image(mask, col, row)) { mask.at<uint8_t>(row, col) = 0; }
+		        	}
+		        }
+
+                features.emplace_back(new feature(host, Eigen::Vector2d(uv.x, uv.y) * scale, i));
+                ++count;
+            }
+
+            if (i + 1 < pyramid.size()) {
+                cv::resize(mask, mask, pyramid[i + 1].size());
+            }
+        }
+
         reset();
         return count;
     }

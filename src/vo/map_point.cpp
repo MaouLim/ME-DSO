@@ -22,9 +22,9 @@ namespace vslam {
     
     map_point_seed::~map_point_seed() {
 #ifdef _ME_VSLAM_DEBUG_INFO_
-        std::cout << "Map point seed: " << id 
-                  << " live time: "     << count_updates 
-                  << std::endl;
+        // std::cout << "Map point seed: " << id 
+        //           << " live time: "     << count_updates 
+        //           << std::endl;
 #endif
     }
 
@@ -154,8 +154,6 @@ namespace vslam {
     }
 
     double map_point::local_optimize(size_t n_iterations) {
-        static const double converge_eps = 1e-10;
-
         Eigen::Vector3d old_pos = position;
 
         double last_chi2 = 0.0;
@@ -199,7 +197,7 @@ namespace vslam {
             position += delta;
             last_chi2 = chi2;
 
-            if (delta.norm() < converge_eps) {
+            if (delta.norm() < config::opt_converged_thresh_xyz) {
 #ifdef _ME_VSLAM_DEBUG_INFO_OPT_
                 std::cout << "[MP]" << "Converged at" << i << std::endl;
 #endif 

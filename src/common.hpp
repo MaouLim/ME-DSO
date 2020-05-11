@@ -201,6 +201,10 @@ namespace config {
     extern const int    pyr_levels;             
     extern const int    cell_sz;      
     extern const int    max_opt_iterations; 
+    extern const double opt_converged_thresh_lk;
+    extern const double opt_converged_thresh_uv;
+    extern const double opt_converged_thresh_xyz;
+    extern const double opt_converged_thresh_eps;
 
     extern const double max_reproj_err_uv;
     extern const double max_reproj_err_xy1;         

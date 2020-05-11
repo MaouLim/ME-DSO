@@ -83,11 +83,15 @@ namespace vslam::backend {
 
     g2o_optimizer::g2o_optimizer(bool verbose, size_t n_trials) {
 
-        auto linear_solver = g2o::make_unique<g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>>();
-        auto block_solver  = g2o::make_unique<g2o::BlockSolver_6_3>(std::move(linear_solver));
+        using block_solver_t  = g2o::BlockSolver<g2o::BlockSolverTraits<6, 3>>;
+        using linear_solver_t = g2o::LinearSolverEigen<typename block_solver_t::PoseMatrixType>;
         
         g2o::OptimizationAlgorithmLevenberg* algo = 
-            new g2o::OptimizationAlgorithmLevenberg(std::move(block_solver));
+            new g2o::OptimizationAlgorithmLevenberg(
+                g2o::make_unique<block_solver_t>(
+                    g2o::make_unique<linear_solver_t>()
+                )
+            );
         algo->setMaxTrialsAfterFailure(n_trials);
 
         _optimizer.setAlgorithm(algo);
