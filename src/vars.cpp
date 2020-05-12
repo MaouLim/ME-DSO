@@ -26,11 +26,11 @@ namespace config {
     const double max_reproj_err_uv       = 0.4;
     const double max_reproj_err_xy1      = max_reproj_err_uv * 2. / (fx + fy);
 
-    const int    min_features_in_first   = 400;
-    const int    min_features_to_tracked = 250;
+    const int    min_features_in_first   = 500;
+    const int    min_features_to_tracked = 100;
     const double min_init_shift          = 30.0;
-    const int    min_inliers             = 100;
-    const double min_inlier_ratio        = 0.2;
+    const int    min_inliers             = 50;
+    const double min_inlier_ratio        = 0.1;
     const int    cv_lk_win_sz            = 21;
     const double init_scale              = 1.0;
  
@@ -46,9 +46,9 @@ namespace config {
     /**
      * @note constants for core system
      */ 
-    const int    min_reproj_mps       = 200;
+    const int    min_reproj_mps       = 50;
     const int    max_mps_to_local_opt = 100;
-    const double max_drop_ratio       = 0.8;
+    const double max_drop_ratio       = 0.99;
 
 
     const int    max_global_map_frames = 500;

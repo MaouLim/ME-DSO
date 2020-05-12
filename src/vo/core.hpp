@@ -31,10 +31,12 @@ namespace vslam {
 
         frame_ptr _create_frame(const cv::Mat& raw_img, double timestamp);
         void _df_callback(const map_point_ptr& new_mp, double cov2);
-        bool _need_new_kf(const frame_ptr& frame) const;
+        bool _need_new_kf(const frame_ptr& frame);
         void _build_local_map();
         void _reduce_map();
         void _clear_cache();
+
+        size_t              _count_tracks;
 
         state_t             _state;
         quality_t           _quality;

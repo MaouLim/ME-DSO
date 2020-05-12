@@ -810,10 +810,10 @@ namespace vslam {
             Eigen::Vector2d xy_unit_plane = 
                 utils::project(t_cw * each->map_point_describing->position);
             double each_err = (xy_unit_plane - each->xy1.head<2>()).norm();
-            err += 0.5* each_err;
+            err += each_err;
             if (reproj_thresh < each_err) { 
                 outliers.emplace_back(each);
-                continue;  
+                continue;
             }
             inliers.emplace_back(each);
         }

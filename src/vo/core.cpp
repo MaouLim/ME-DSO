@@ -15,7 +15,7 @@
 namespace vslam {
     
     system::system(const camera_ptr& cam) :
-        _state(INITIALIZING), _quality(GOOD), _camera(cam), _last(nullptr)
+        _count_tracks(0), _state(INITIALIZING), _quality(GOOD), _camera(cam), _last(nullptr)
     {
         assert(_camera);
         assert(config::height == _camera->height && 
@@ -26,11 +26,9 @@ namespace vslam {
         );
         _initializer.reset(new initializer());
 
-        detector_ptr det =                                                                                                            
-            utils::mk_vptr<fast_detector>(config::height, config::width, config::cell_sz, config::pyr_levels);
         auto callback = 
             std::bind(&system::_df_callback, this, std::placeholders::_1, std::placeholders::_2);
-        _depth_filter.reset(new depth_filter(det, callback));
+        _depth_filter.reset(new depth_filter(callback));
         _tf_estimator.reset(new twoframe_estimator(config::max_opt_iterations, 4, 0, twoframe_estimator::LK_ICIA));
         _sf_estimator.reset(new singleframe_estimator(config::max_opt_iterations, vslam::singleframe_estimator::PNP_BA));
     }
@@ -65,6 +63,8 @@ namespace vslam {
             }
             case TRACKING : {
                 _state = track_frame(new_frame);
+                if (TRACKING == _state) { ++_count_tracks; }
+                else { _count_tracks = 0; }
                 break;
             }
             case RELOCALIZING : {
@@ -128,7 +128,7 @@ namespace vslam {
 
         double reproj_err = 0.0;
         singleframe_estimator::compute_inliers_and_reporj_err(
-            new_frame, refined_t_cr, config::max_reproj_err_xy1 * 4., _inliers, _outliers, reproj_err
+            new_frame, refined_t_cr, config::max_reproj_err_xy1 * 8., _inliers, _outliers, reproj_err
         );
 #ifdef _ME_VSLAM_DEBUG_INFO_
             std::cout << "[SYSTEM]" << "Inliers: " 
@@ -173,8 +173,9 @@ namespace vslam {
 
         nth = _inliers.begin() + config::max_mps_to_local_opt;
         for (auto itr = _inliers.begin(); itr != nth; ++itr) {
-            (*itr)->map_point_describing->local_optimize(config::max_opt_iterations);
-            (*itr)->map_point_describing->last_opt = new_frame->id;
+            // TODO (*itr)->map_point_describing nullptr?
+            //(*itr)->map_point_describing->local_optimize(config::max_opt_iterations);
+            //(*itr)->map_point_describing->last_opt = new_frame->id;
         }
 
         _local_map.insert(new_frame);
@@ -259,7 +260,8 @@ namespace vslam {
         _candidates.add_candidate(new_mp);
     }
 
-    bool system::_need_new_kf(const frame_ptr& frame) const {
+    bool system::_need_new_kf(const frame_ptr& frame) {
+        if (10 < _count_tracks) { _count_tracks = 0; return true; }
         double _, median; 
         assert(vslam::min_and_median_depth_of_frame(frame, _, median));
         for (auto& kf_overlap : _kfs_with_overlaps) {

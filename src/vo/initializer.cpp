@@ -61,7 +61,7 @@ namespace vslam {
             essential_score = double(essential_success) * 
                               double(inlier_indices_e.size()) / (mean_err + config::max_reproj_err_xy1);
         }
-        //essential_score = 0;
+        //essential_score = 0.1;
 
         /**
          * @note calculate homography
@@ -79,7 +79,7 @@ namespace vslam {
         }
         //homography_score = 0;
 
-        if (!essential_success && !homography_success) { 
+        if (essential_score <= CONST_EPS || homography_score <= CONST_EPS) { 
 #ifdef _ME_VSLAM_DEBUG_INFO_
             std::cout << "[INIT]" << "Failed to compute pose from matches." << std::endl;
 #endif      
@@ -201,7 +201,7 @@ namespace vslam {
         size_t max_feats = (config::width / config::cell_sz) * 
                            (config::height / config::cell_sz);
         cv::Ptr<cv::GFTTDetector> det = 
-            cv::GFTTDetector::create(max_feats, 0.05, config::cell_sz / 2.);
+            cv::GFTTDetector::create(max_feats, 0.02, config::cell_sz / 10);
         std::vector<cv::KeyPoint> kpts;
         det->detect(target->image(), kpts);
 

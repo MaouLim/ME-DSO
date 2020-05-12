@@ -14,8 +14,8 @@ namespace vslam {
         base_type(max_queue_sz), 
         _callback(_cb), _count_key_frames(0)
     {
-        _detector = utils::mk_vptr<fast_detector>(
-            config::height, config::width, config::cell_sz, config::pyr_levels
+        _detector = utils::mk_vptr<gftt_detector>(
+            config::height, config::width, config::cell_sz, config::pyr_levels, 0.75 * config::min_features_in_first
         );
         add_handler(std::bind(&depth_filter::_handle_message, this, std::placeholders::_1));
         _matcher = utils::mk_vptr<patch_matcher>(true);
@@ -87,9 +87,9 @@ namespace vslam {
         for (const auto& each_feat : features) {
             _seeds.emplace_back(_count_key_frames, each_feat, d_median, d_min);
 #ifdef _ME_VSLAM_DEBUG_INFO_
-            const auto& s = _seeds.back();
-            std::cout << "[DF]" << "New seed: "
-                      << s.a << ", " << s.b << ", " << s.mu << ", " << s.sigma2 << s.dinv_range << std::endl;
+            // const auto& s = _seeds.back();
+            // std::cout << "[DF]" << "New seed: "
+            //           << s.a << ", " << s.b << ", " << s.mu << ", " << s.sigma2 << s.dinv_range << std::endl;
 #endif
         }
     }
@@ -150,6 +150,13 @@ namespace vslam {
         Eigen::Vector3d trans_cr = (ref->t_cw * cur->t_wc /* t_rc */).translation();
         // tau: depth uncertainty
         double tau = utils::calc_depth_cov(xyz_ref, trans_cr, focal_len);
+
+        if (std::isnan(tau)) { 
+            // large uncertainty, maybe no translation
+            itr = _seeds.erase(itr);
+            return;
+        }
+
         // tau_inv: inversed depth uncertainty
         double tau_inv = 0.5 * (1.0 / std::max(depth_est - tau, CONST_EPS) - 1.0 / (depth_est + tau));
 

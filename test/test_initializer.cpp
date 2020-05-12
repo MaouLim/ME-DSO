@@ -12,7 +12,7 @@
 #include <pcl/pcl_base.h>
 #include <pcl/visualization/cloud_viewer.h>
 
-const std::string dataset_dir = "data/fr1_xyz/";
+const std::string dataset_dir = "data/fr1_floor/";
 const std::string association_file = dataset_dir + "rgb-gt.txt";
 const size_t      max_images = 500;
 

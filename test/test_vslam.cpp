@@ -84,12 +84,37 @@ int main(int argc, char** argv) {
     vslam::system slam_sys(cam);
     slam_sys.start();
 
+    cv::viz::Viz3d visualizer("VO");
+	cv::viz::WCoordinateSystem world_sys(1.0), camera_sys(0.2);
+	cv::Vec3d camera_pos(0., -1., -1.), camera_center(0., 0., 0.), camera_yaxis(0., 1., 0.);
+	cv::Affine3d cam_pose = cv::viz::makeCameraPose(camera_pos, camera_center, camera_yaxis);
+	visualizer.setViewerPose(cam_pose);
+
+	camera_sys.setRenderingProperty(cv::viz::LINE_WIDTH, 1.);
+	visualizer.showWidget("camera", camera_sys);
+
     for (auto& data : images) {
         slam_sys.process_image(data.second, data.first);
         const auto& last_frame = slam_sys.last_frame();
         cv::Mat f_vis = draw_feats(last_frame);
         // todo visualize the pose
         // try to accelerate the depth_filter converging 
+
+        auto t_cam2world = last_frame->t_wc;//f1->t_wc;
+		auto r = t_cam2world.rotationMatrix();
+		auto t = t_cam2world.translation() * 2.0;
+
+		cv::Affine3d::Mat3 rot(
+			r(0, 0), r(0, 1), r(0, 2),
+			r(1, 0), r(1, 1), r(1, 2),
+			r(2, 0), r(2, 1), r(2, 2)
+		);
+
+		cv::Affine3d::Vec3 trans(t[0], t[1], t[2]);
+		cv::Affine3d transform(rot, trans);
+		visualizer.setWidgetPose("camera", transform);
+        visualizer.spinOnce(1);
+
         cv::imshow("VIS", f_vis);
         cv::waitKey(60);
     }
